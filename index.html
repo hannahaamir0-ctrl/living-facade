@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Living Facade: drones that tend a vertical green-wall facade, with a playable simulation and language-model proposals.">
+<style>body{margin:0}</style>
+<title>Living Facade Project</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: an architectural drawing sheet. Hairline frame and title block; the live elevation is the hero; sections read as sheet notes with a left index column. */
+:root {
+  --ground: #eef0ea;
+  --ink: #1b1f1a;
+  --muted: #59625a;
+  --rule: #cdd3c8;
+  --sheet: #e0e4da;
+  --tray: #c6cdbf;
+  --leaf: #3d7838;
+  --leaf2: #79a03c;
+  --give: #d4903a;
+  --refuse: #c7361f;
+  --flow: #2f62a3;
+  --feed: #8a5a2b;
+  --ok: #2f7d4f;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --max: 1180px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #111411; --ink: #e3e8df; --muted: #98a093; --rule: #2b302a; --sheet: #1a1e19; --tray: #2b3128;
+    --leaf: #5fa457; --leaf2: #9cc15e; --give: #e0a24e; --refuse: #ff6a4f; --flow: #7fa9d9; --feed: #c99a63; --ok: #5fb884;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #111411; --ink: #e3e8df; --muted: #98a093; --rule: #2b302a; --sheet: #1a1e19; --tray: #2b3128;
+  --leaf: #5fa457; --leaf2: #9cc15e; --give: #e0a24e; --refuse: #ff6a4f; --flow: #7fa9d9; --feed: #c99a63; --ok: #5fb884;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { background: var(--ground); color: var(--ink); font: 16px/1.6 var(--sans); }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--flow); outline-offset: 3px; }
+
+.wrap { max-width: var(--max); margin: 0 auto; padding-inline: 20px; }
+
+/* nav */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--ground); border-bottom: 1px solid var(--rule); }
+.top .wrap { display: flex; align-items: center; gap: 22px; min-height: 56px; flex-wrap: wrap; padding-block: 8px; }
+.mark { font: 700 18px/1 var(--display); letter-spacing: .01em; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; margin-right: auto; }
+.mark i { width: 14px; height: 14px; border: 1.5px solid var(--ink); display: inline-block; background:
+  linear-gradient(var(--leaf), var(--leaf)) 2px 2px / 4px 4px no-repeat,
+  linear-gradient(var(--leaf2), var(--leaf2)) 7px 7px / 4px 4px no-repeat; }
+.top nav { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+.top nav a { font: 500 14px/1 var(--sans); text-decoration: none; color: var(--muted); padding-block: 6px; }
+.top nav a:hover { color: var(--ink); }
+.btn { display: inline-flex; align-items: center; gap: 8px; font: 500 15px/1 var(--sans); text-decoration: none; border: 1.5px solid var(--ink); padding: 12px 18px; border-radius: 2px; color: var(--ink); background: transparent; }
+.btn:hover { background: var(--sheet); }
+.btn.primary { background: var(--ink); color: var(--ground); }
+.btn.primary:hover { background: var(--muted); border-color: var(--muted); }
+.top .btn { padding: 9px 14px; font-size: 14px; }
+.top nav a.btn { color: var(--ground); }
+
+/* type */
+.eyebrow, .label { font: 500 12px/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0; }
+h1 { font: 700 clamp(64px, 11vw, 148px)/.84 var(--display); letter-spacing: -.02em; margin: 14px 0 22px; text-transform: uppercase; }
+h1 span { display: block; color: var(--leaf); }
+h2 { font: 600 clamp(30px, 4.2vw, 44px)/1.02 var(--display); letter-spacing: -.005em; margin: 0 0 16px; text-wrap: balance; }
+h3 { font: 600 21px/1.15 var(--display); margin: 0 0 6px; }
+p { margin: 0 0 14px; max-width: 64ch; }
+
+/* hero */
+.hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px; align-items: end; padding-block: 44px 56px; }
+@media (max-width: 920px) { .hero { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-block: 28px 40px; } }
+.thesis { font-size: 19px; line-height: 1.5; max-width: 38ch; }
+.cta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+.spec { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 34px 0 0; border-top: 1.5px solid var(--ink); }
+.spec div { padding: 10px 12px 0 0; }
+.spec dt { font: 600 32px/1 var(--display); font-variant-numeric: tabular-nums; }
+.spec dd { margin: 4px 0 0; font: 12px/1.35 var(--mono); color: var(--muted); }
+@media (max-width: 460px) { .spec { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; } }
+
+.sheet { margin: 0; border: 1.5px solid var(--ink); background: var(--ground); }
+.sheet canvas { display: block; width: 100%; aspect-ratio: 16.8 / 13.6; max-width: 100%; }
+.titleblock { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr; border-top: 1.5px solid var(--ink); }
+.titleblock div { padding: 8px 10px; border-left: 1px solid var(--ink); min-width: 0; }
+.titleblock div:first-child { border-left: 0; }
+.titleblock b { display: block; font: 600 15px/1.2 var(--display); overflow-wrap: anywhere; }
+.titleblock span { font: 10.5px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+@media (max-width: 520px) { .titleblock { grid-template-columns: 1fr 1fr; } .titleblock div:nth-child(3) { border-left: 0; border-top: 1px solid var(--ink); } .titleblock div:nth-child(4) { border-top: 1px solid var(--ink); } }
+
+/* sheet notes */
+.note { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 32px; padding-block: 56px; border-top: 1.5px solid var(--ink); }
+@media (max-width: 820px) { .note { grid-template-columns: minmax(0, 1fr); gap: 14px; padding-block: 40px; } }
+.note > .label { padding-top: 10px; }
+.note > .body { min-width: 0; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 36px; align-items: start; }
+@media (max-width: 820px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+
+.steps { list-style: none; margin: 0; padding: 0; counter-reset: s; display: grid; gap: 0; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 4px 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.steps li::before { content: counter(s, decimal-leading-zero); font: 500 13px/1.6 var(--mono); color: var(--muted); grid-row: span 2; }
+.steps b { font: 600 18px/1.3 var(--display); }
+.steps span { color: var(--muted); font-size: 15px; }
+
+.diagram { margin: 0; }
+.diagram svg { width: 100%; height: auto; display: block; }
+.diagram figcaption { font: 12px/1.5 var(--mono); color: var(--muted); margin-top: 8px; }
+
+.forces { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--rule); }
+@media (max-width: 900px) { .forces { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .forces { grid-template-columns: minmax(0, 1fr); } }
+.forces article { padding: 18px 18px 18px 0; border-bottom: 1px solid var(--rule); min-width: 0; }
+.chip { display: inline-block; width: 28px; height: 6px; margin-bottom: 12px; }
+.forces p { font-size: 15px; margin: 0 0 8px; }
+.forces .fix { font: 12.5px/1.45 var(--mono); color: var(--muted); margin: 0; }
+
+.flow { display: grid; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr) 28px minmax(0, 1.2fr); align-items: stretch; margin: 26px 0 30px; }
+.flow .box { border: 1.5px solid var(--ink); padding: 14px 16px; min-width: 0; }
+.flow .box h3 { font-size: 19px; }
+.flow .box p { font-size: 14.5px; margin: 0; color: var(--muted); }
+.flow .arrow { align-self: center; justify-self: center; font: 500 18px var(--mono); color: var(--muted); }
+.flow .split { display: grid; gap: 10px; }
+.flow .split .box { border-width: 1.5px; }
+.flow .acc { border-color: var(--flow); }
+.flow .acc h3 { color: var(--flow); }
+.flow .ref { border-color: var(--refuse); }
+.flow .ref h3 { color: var(--refuse); }
+@media (max-width: 820px) { .flow { grid-template-columns: minmax(0, 1fr); } .flow .arrow { transform: rotate(90deg); padding-block: 4px; } }
+
+pre { margin: 0; font: 13px/1.55 var(--mono); background: var(--sheet); padding: 14px 16px; overflow-x: auto; border-radius: 2px; }
+.out { font: 13px/1.5 var(--mono); padding: 10px 12px; border-left: 3px solid; margin: 0 0 10px; overflow-wrap: anywhere; }
+.out.acc { border-color: var(--flow); background: var(--sheet); }
+.out.ref { border-color: var(--refuse); background: var(--sheet); }
+.out b { font-weight: 500; }
+.codes { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; }
+.codes li { font: 500 11.5px/1 var(--mono); letter-spacing: .06em; padding: 6px 8px; border: 1px solid var(--refuse); color: var(--refuse); border-radius: 2px; }
+
+.measures { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 36px; }
+@media (max-width: 680px) { .measures { grid-template-columns: minmax(0, 1fr); } }
+.measures div { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.measures dt { font: 600 18px/1.3 var(--display); }
+.measures dd { margin: 2px 0 0; color: var(--muted); font-size: 15px; }
+
+.check { width: 100%; border-collapse: collapse; font-size: 15px; }
+.check th, .check td { text-align: left; vertical-align: top; padding: 12px 14px 12px 0; border-bottom: 1px solid var(--rule); }
+.check th { font: 500 12px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border-bottom: 1.5px solid var(--ink); }
+.check td:first-child { font: 600 17px/1.3 var(--display); white-space: nowrap; }
+.check .met { font: 500 12px/1 var(--mono); color: var(--ok); white-space: nowrap; }
+.tablewrap { overflow-x: auto; }
+
+.play { background: var(--ink); color: var(--ground); }
+.play .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px; align-items: center; padding-block: 56px; }
+@media (max-width: 760px) { .play .wrap { grid-template-columns: minmax(0, 1fr); } }
+.play h2 { color: var(--ground); }
+.play p { color: var(--ground); opacity: .8; margin: 0; }
+.play .btn { border-color: var(--ground); color: var(--ink); background: var(--ground); font-size: 17px; padding: 15px 22px; }
+.play .btn:hover { background: var(--sheet); }
+
+footer .wrap { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-block: 0; }
+footer .wrap > div { padding: 14px 12px 18px 0; border-right: 1px solid var(--rule); min-width: 0; }
+footer .wrap > div + div { padding-left: 12px; }
+footer .wrap > div:last-child { border-right: 0; }
+footer b { display: block; font: 600 15px/1.3 var(--display); overflow-wrap: anywhere; }
+footer span { font: 10.5px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+@media (max-width: 620px) { footer .wrap { grid-template-columns: 1fr 1fr; } footer .wrap > div:nth-child(2) { border-right: 0; } footer .wrap > div:nth-child(3) { padding-left: 0; } }
+</style>
+
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="mark" href="#top"><i aria-hidden="true"></i>Living Facade</a>
+    <nav aria-label="Site">
+      <a href="#how">How it works</a>
+      <a href="#propose">Proposals</a>
+      <a href="#measure">Measures</a>
+      <a href="#brief">Brief</a>
+      <a class="btn primary" href="play.html">Play</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <p class="eyebrow">Facade sketch · drone-tended green wall</p>
+      <h1>Living <span>Facade</span></h1>
+      <p class="thesis">A green wall that looks after itself. A small fleet of drones waters, feeds, treats and revives 140 planted modules on a 30-metre facade, using only what each drone can see.</p>
+      <div class="cta">
+        <a class="btn primary" href="play.html">Play the facade →</a>
+        <a class="btn" href="#how">How it works</a>
+      </div>
+      <dl class="spec">
+        <div><dt>30 m</dt><dd>facade height, 10 levels</dd></div>
+        <div><dt>140</dt><dd>planted modules</dd></div>
+        <div><dt>4</dt><dd>plant species</dd></div>
+        <div><dt>1–10</dt><dd>drones on the roof dock</dd></div>
+      </dl>
+    </div>
+    <figure class="sheet" aria-label="Live drawing of the south elevation with drones tending the modules">
+      <canvas id="hero"></canvas>
+      <figcaption class="titleblock">
+        <div><span>Project</span><b>Living Facade</b></div>
+        <div><span>Drawing</span><b>South elevation, live</b></div>
+        <div><span>Scale</span><b>1:150</b></div>
+        <div><span>Sheet</span><b>A-201</b></div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <div class="wrap">
+    <section class="note" aria-labelledby="t-wall">
+      <p class="label">01 · The wall</p>
+      <div class="body cols">
+        <div>
+          <h2 id="t-wall">A garden hung on a building</h2>
+          <p>Living walls cool streets, hold rainwater and give birds and insects somewhere to live. They also need constant care: irrigation, feeding, pest control and replacing plants that fail. Today that work is done by technicians on ropes and lifts, and when the care stops, the wall dies.</p>
+          <p>This project hands the care to drones. The facade is 14 bays of 1.5&nbsp;m across and 10 levels of 3&nbsp;m up. Sedum mats sit on the exposed top levels, sedge grasses in the middle, shade ferns near the street, and climbing ivy throughout.</p>
+        </div>
+        <div>
+          <h2 style="font-size:24px">What the wall does to itself</h2>
+          <div class="forces" style="grid-template-columns: minmax(0,1fr) minmax(0,1fr)">
+            <article><i class="chip" style="background:var(--flow)"></i><h3>Drying</h3><p>Sun and wind pull water from the soil, fastest on the top levels.</p><p class="fix">→ water</p></article>
+            <article><i class="chip" style="background:var(--feed)"></i><h3>Hunger</h3><p>Growing plants use up nutrients and stop fruiting.</p><p class="fix">→ fertilizer, mixed into watering</p></article>
+            <article><i class="chip" style="background:var(--refuse)"></i><h3>Pests</h3><p>An infestation spreads to the next module if nobody comes.</p><p class="fix">→ treat</p></article>
+            <article><i class="chip" style="background:var(--give)"></i><h3>Decay</h3><p>Root rot and old growth brown a module, and it dies if nobody comes.</p><p class="fix">→ revive</p></article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="note" id="how" aria-labelledby="t-how">
+      <p class="label">02 · Behaviour</p>
+      <div class="body cols">
+        <div>
+          <h2 id="t-how">How a drone decides</h2>
+          <p>No drone sees the whole wall, and no central planner tells it what to do. Each one follows the same short loop, and the pattern of care across the facade emerges from that.</p>
+          <ol class="steps">
+            <li><b>Look around</b><span>Scan the modules within sensing reach, plus any module a person has flagged.</span></li>
+            <li><b>Pick the most urgent</b><span>Dead and decaying modules first, then pests, dry soil and hungry soil. Closer is better. Skip anything another drone has claimed.</span></li>
+            <li><b>Check the battery</b><span>Only go if there is charge for the trip, the job and the flight home.</span></li>
+            <li><b>Fly the rails</b><span>Travel along the joints of the wall: across on the slab lines, up and down on the bay lines.</span></li>
+            <li><b>Give way</b><span>Hold or step aside for drones at work and lower-numbered drones. Drones never overlap.</span></li>
+            <li><b>Work, then look again</b><span>Water, feed, treat or revive, then scan from where you are. Go home to recharge and refill when low.</span></li>
+          </ol>
+        </div>
+        <figure class="diagram">
+          <svg viewBox="0 0 340 300" role="img" aria-label="Diagram: a drone flies along the joints between modules to reach a dry module, passing a drone that is working">
+            <rect x="0" y="0" width="340" height="300" fill="var(--ground)"/>
+            <rect x="20" y="40" width="300" height="240" fill="var(--sheet)"/>
+            <g fill="var(--tray)">
+              <rect x="26" y="66" width="48" height="10"/><rect x="86" y="66" width="48" height="10"/><rect x="146" y="66" width="48" height="10"/><rect x="206" y="66" width="48" height="10"/><rect x="266" y="66" width="48" height="10"/>
+              <rect x="26" y="126" width="48" height="10"/><rect x="86" y="126" width="48" height="10"/><rect x="146" y="126" width="48" height="10"/><rect x="206" y="126" width="48" height="10"/><rect x="266" y="126" width="48" height="10"/>
+              <rect x="26" y="186" width="48" height="10"/><rect x="86" y="186" width="48" height="10"/><rect x="146" y="186" width="48" height="10"/><rect x="206" y="186" width="48" height="10"/><rect x="266" y="186" width="48" height="10"/>
+              <rect x="26" y="246" width="48" height="10"/><rect x="86" y="246" width="48" height="10"/><rect x="146" y="246" width="48" height="10"/><rect x="206" y="246" width="48" height="10"/><rect x="266" y="246" width="48" height="10"/>
+            </g>
+            <g stroke="var(--rule)" stroke-width="1.5" fill="none">
+              <path d="M20 40H320M20 100H320M20 160H320M20 220H320M20 280H320"/>
+              <path d="M80 40V280M140 40V280M200 40V280M260 40V280"/>
+            </g>
+            <path d="M20 40H320" stroke="var(--ink)" stroke-width="2.5"/>
+            <rect x="248" y="10" width="24" height="22" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+            <text x="200" y="26" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--muted)">dock</text>
+            <rect x="148" y="166" width="44" height="48" fill="none" stroke="var(--give)" stroke-width="2" stroke-dasharray="4 3"/>
+            <text x="150" y="210" font-family="IBM Plex Mono, monospace" font-size="9" fill="var(--give)">D2 claim</text>
+            <circle cx="170" cy="190" r="7" fill="var(--ink)"/><circle cx="170" cy="190" r="3" fill="var(--flow)"/>
+            <text x="180" y="184" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ink)">D2</text>
+            <rect x="28" y="226" width="44" height="48" fill="none" stroke="var(--flow)" stroke-width="2"/>
+            <path d="M260 32V40H260V100H80V220H50V250" fill="none" stroke="var(--flow)" stroke-width="2.5" stroke-linejoin="round"/>
+            <circle cx="260" cy="70" r="7" fill="var(--ink)"/><circle cx="260" cy="70" r="3" fill="var(--ground)"/>
+            <text x="270" y="64" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ink)">D1</text>
+            <text x="30" y="292" font-family="IBM Plex Mono, monospace" font-size="9" fill="var(--flow)">dry module</text>
+          </svg>
+          <figcaption>D1 leaves the dock for a dry module at the bottom left. It runs along the slab line, then down the bay line, keeping half a module clear of D2, which is busy on its claimed module.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="note" id="propose" aria-labelledby="t-prop">
+      <p class="label">03 · Proposals</p>
+      <div class="body">
+        <h2 id="t-prop">A language model proposes. The wall decides.</h2>
+        <p>Press <b>Suggest next move</b> and the playground writes up the state of the wall for a language model: every drone's position, battery, water and fertilizer, the most urgent modules, and the rules. The model replies with up to three moves. The simulation checks each one before it runs, and refuses anything that cannot work.</p>
+        <div class="flow" aria-label="Proposal flow">
+          <div class="box"><h3>The model proposes</h3><p>Send a drone to a module, change the fleet, the water trigger or the sensing reach, flag a module, or wait.</p></div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="box"><h3>The simulation checks</h3><p>Battery for the round trip, tank and hopper levels, claims by other drones, soil and nutrient levels, dock capacity.</p></div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="split">
+            <div class="box acc"><h3>Accepted</h3><p>The drone drops its job and flies the route, drawn in blue with the proposal number.</p></div>
+            <div class="box ref"><h3>Refused</h3><p>The failure is drawn where it happens: the route in red, an X where the battery runs out, the drones circled.</p></div>
+          </div>
+        </div>
+        <div class="cols">
+          <div>
+            <p class="label" style="margin-bottom:8px">A proposal</p>
+<pre>{"moves": [
+  {"type": "dispatch", "drone": "D1",
+   "module": "L7·B12", "task": "water",
+   "why": "driest module near the top"},
+  {"type": "dispatch", "drone": "D2",
+   "module": "L2·B1", "task": "water",
+   "why": "street level is drying"}
+]}</pre>
+          </div>
+          <div>
+            <p class="label" style="margin-bottom:8px">What the wall said</p>
+            <p class="out acc"><b>#1 ACCEPTED</b> · D1 → L7·B12, watering. Round trip uses about 36% battery.</p>
+            <p class="out ref"><b>#2 UNREACHABLE</b> · D2 has 12% battery and would run flat on the way home from L2·B1.</p>
+            <p style="font-size:15px;color:var(--muted)">Every refusal has a code, a plain reason, and a mark on the wall.</p>
+            <ul class="codes" aria-label="Refusal codes">
+              <li>UNREACHABLE</li><li>JAM</li><li>BUSY</li><li>OVERWATER</li><li>OVERFEED</li><li>NOTHING TO DO</li><li>DEAD</li><li>EMPTY</li><li>DOCK FULL</li><li>OUT OF RANGE</li><li>UNREADABLE</li>
+            </ul>
+          </div>
+        </div>
+        <p style="margin-top:22px">Bring your own Claude API key for one-click suggestions, or paste the prompt into any chatbot and paste its reply back. Either way, the same checks apply.</p>
+      </div>
+    </section>
+
+    <section class="note" id="measure" aria-labelledby="t-meas">
+      <p class="label">04 · Measures</p>
+      <div class="body">
+        <h2 id="t-meas">What the trace records</h2>
+        <p>Every season keeps a running account of what the fleet did and what the wall became. The whole trace, with the proposal log, copies out as JSON.</p>
+        <dl class="measures">
+          <div><dt>Season score</dt><dd>Average share of healthy modules over the 14 days. The target is 75%.</dd></div>
+          <div><dt>What survived</dt><dd>Healthy, dead and revived modules, and a healthy-over-time chart.</dd></div>
+          <div><dt>Jobs done</dt><dd>Waterings, feedings, pest treatments and revivals.</dd></div>
+          <div><dt>Throughput</dt><dd>Jobs per game day across the fleet.</dd></div>
+          <div><dt>Coverage</dt><dd>Share of the wall tended in the last 24 game hours.</dd></div>
+          <div><dt>Proposals</dt><dd>Accepted and refused, with refusals counted by reason.</dd></div>
+          <div><dt>Resources</dt><dd>Litres of water, kilograms of fertilizer, kilowatt-hours of charge.</dd></div>
+          <div><dt>Live readout</dt><dd>Wilting, pests, decaying and hungry modules, wind at the parapet, each drone's battery and payload.</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="note" id="brief" aria-labelledby="t-brief">
+      <p class="label">05 · Brief</p>
+      <div class="body">
+        <h2 id="t-brief">Playground checklist</h2>
+        <div class="tablewrap">
+          <table class="check">
+            <thead><tr><th scope="col">Requirement</th><th scope="col">Where it is</th><th scope="col">Status</th></tr></thead>
+            <tbody>
+              <tr><td>(a) Live simulation</td><td>The facade runs in the playground at 1× to 20×, with the drones following the loop above.</td><td class="met">Met</td></tr>
+              <tr><td>(b) Propose</td><td><b>Suggest next move</b> asks Claude directly with your key, or copies a documented prompt for any chatbot. Replies go in the Proposal box.</td><td class="met">Met</td></tr>
+              <tr><td>(c) Visible refusal</td><td>Refused moves are drawn on the wall with a code: unreachable routes, jams, overwatering, a full dock.</td><td class="met">Met</td></tr>
+              <tr><td>(d) Score or trace</td><td>Season score, survival, throughput, coverage and the proposal log, exportable as JSON.</td><td class="met">Met</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="play" aria-labelledby="t-play">
+    <div class="wrap">
+      <div>
+        <h2 id="t-play">Run a season</h2>
+        <p>Fourteen days, up to ten drones, one wall. No install: it runs in the browser.</p>
+      </div>
+      <a class="btn" href="play.html">Open the playground →</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div><span>Project</span><b>Living Facade</b></div>
+    <div><span>Type</span><b>Facade simulation</b></div>
+    <div><span>Issued</span><b>October 2026</b></div>
+    <div><span>Sheet</span><b>A-000 · Cover</b></div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  // A light version of the playground: four drones, each tending its own band of bays,
+  // flying the rails from the roof dock to the driest or decaying module in its band.
+  const COLS = 14, ROWS = 10;
+  const BANDS = [[0, 4], [4, 7], [7, 11], [11, 14]];
+  const cv = document.getElementById('hero'), ctx = cv.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let C = {}, G = {};
+  const hex = h => { h = h.trim().replace('#', ''); if (h.length === 3) h = h.split('').map(x => x + x).join(''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const mix = (a, b, t) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',')})`;
+  function tokens() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of ['ground', 'ink', 'muted', 'rule', 'sheet', 'tray', 'leaf', 'leaf2', 'give', 'refuse', 'flow', 'feed']) { C[k] = cs.getPropertyValue('--' + k).trim(); C[k + 'R'] = hex(C[k]); }
+    C.mono = cs.getPropertyValue('--mono');
+  }
+  tokens();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', tokens);
+  new MutationObserver(tokens).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  const cells = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const f = r / (ROWS - 1);
+    cells.push({ r, c, sp: f < 0.3 ? 'sedum' : f < 0.7 ? 'grass' : 'fern', m: 0.35 + rnd() * 0.6, h: 0.85 + rnd() * 0.15, decay: false, claimed: false,
+      blobs: Array.from({ length: 7 }, () => ({ x: rnd() * 2 - 1, y: rnd() * 2 - 1, s: 0.7 + rnd() * 0.6 })) });
+  }
+  const at = (r, c) => cells[r * COLS + c];
+  const drones = BANDS.map(([a, b], i) => {
+    const px = (a + b) / 2;
+    return { i, band: [a, b], home: [px, -0.72], x: px, y: -0.72, path: [], state: 'dock', wait: 0.4 + i * 0.5, target: null, work: 0 };
+  });
+
+  function route(d, tx, ty) {
+    const [a, b] = d.band, down = ty > d.y;
+    const ey = Math.max(0, Math.min(ROWS, down ? Math.ceil(d.y - 1e-6) : Math.floor(d.y + 1e-6)));
+    const bx = Math.max(a + 1, Math.min(b - 1, Math.round(d.x)));
+    const ly = ty < 0 ? 0 : down ? Math.floor(ty) : Math.ceil(ty);
+    d.path = [[d.x, ey], [bx, ey], [bx, ly], [tx, ly], [tx, ty]];
+  }
+  function pick(d) {
+    const [a, b] = d.band; let best = null, bs = 0;
+    for (let c = a; c < b; c++) for (let r = 0; r < ROWS; r++) {
+      const x = at(r, c); if (x.claimed) continue;
+      const need = x.decay ? 1.2 - x.h : x.m < 0.4 ? 0.4 - x.m + 0.3 : 0;
+      if (need > bs) { bs = need; best = x; }
+    }
+    return best;
+  }
+  const sprays = [];
+  function step(dt) {
+    for (const x of cells) {
+      x.m = Math.max(0, x.m - dt * (0.012 + 0.02 * (1 - x.r / ROWS)) * (x.sp === 'fern' ? 1.3 : x.sp === 'sedum' ? 0.6 : 1));
+      if (x.decay) x.h = Math.max(0.05, x.h - dt * 0.05);
+      else if (x.m < 0.15) x.h = Math.max(0.2, x.h - dt * 0.03);
+      else x.h = Math.min(1, x.h + dt * 0.02);
+    }
+    if (rnd() < dt * 0.12) { const x = cells[(rnd() * cells.length) | 0]; if (!x.decay && x.h > 0.7) x.decay = true; }
+    for (const d of drones) {
+      if (d.state === 'dock') { d.wait -= dt; if (d.wait <= 0) { const t = pick(d); if (t) { t.claimed = true; d.target = t; route(d, t.c + 0.5, t.r + 0.5); d.state = 'fly'; } else d.wait = 1; } continue; }
+      if (d.state === 'work') {
+        d.work -= dt;
+        if (rnd() < 0.5) sprays.push({ x: d.x + (rnd() - 0.5) * 0.4, y: d.y + 0.1, life: 0.5, col: d.target.decay ? 'give' : 'flow' });
+        if (d.work <= 0) {
+          const t = d.target; t.m = 1; if (t.decay) { t.decay = false; t.h = Math.max(t.h, 0.75); } t.claimed = false; d.target = null; d.jobs = (d.jobs || 0) + 1;
+          const nxt = d.jobs < 4 ? pick(d) : null;
+          if (nxt) { nxt.claimed = true; d.target = nxt; route(d, nxt.c + 0.5, nxt.r + 0.5); d.state = 'fly'; }
+          else { route(d, d.home[0], d.home[1]); d.state = 'home'; d.jobs = 0; }
+        }
+        continue;
+      }
+      let budget = dt * 3.2;
+      while (budget > 0 && d.path.length) {
+        const [wx, wy] = d.path[0], dx = wx - d.x, dy = wy - d.y, L = Math.hypot(dx, dy);
+        if (L < 1e-6) { d.path.shift(); continue; }
+        const s = Math.min(budget, L); d.x += dx / L * s; d.y += dy / L * s; budget -= s;
+        if (s >= L - 1e-9) { d.x = wx; d.y = wy; d.path.shift(); }
+      }
+      if (!d.path.length) {
+        if (d.state === 'fly') { d.state = 'work'; d.work = d.target.decay ? 1.6 : 0.9; }
+        else { d.state = 'dock'; d.wait = 1.2; }
+      }
+    }
+    for (const p of sprays) { p.y += dt * 1.4; p.life -= dt; }
+    for (let i = sprays.length - 1; i >= 0; i--) if (sprays[i].life <= 0) sprays.splice(i, 1);
+  }
+
+  function size() {
+    const w = cv.clientWidth, dpr = window.devicePixelRatio || 1, h = w * 13.6 / 16.8;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const k = w / (COLS + 2.8);
+    G = { w, h, k, x0: k * 1.4, y0: k * 1.9 };
+  }
+  const X = x => G.x0 + x * G.k, Y = y => G.y0 + y * G.k;
+
+  function draw() {
+    const { w, h, k } = G;
+    ctx.fillStyle = C.ground; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = C.sheet; ctx.fillRect(X(0), Y(0), COLS * k, ROWS * k);
+    for (const x of cells) {
+      const cx = X(x.c), cy = Y(x.r), ins = k * 0.08;
+      ctx.fillStyle = C.tray; ctx.fillRect(cx + ins, cy + k * 0.64, k - ins * 2, k * 0.24);
+      const base = x.sp === 'sedum' ? C.leaf2R : x.sp === 'grass' ? C.leafR.map((v, i) => (v + C.leaf2R[i]) / 2) : C.leafR;
+      ctx.fillStyle = mix(base, C.giveR, Math.min(1, (1 - x.h) * 1.5));
+      const g = 0.5 + 0.5 * x.h;
+      for (const b of x.blobs) {
+        ctx.beginPath();
+        ctx.arc(cx + k / 2 + b.x * k * 0.28, cy + k * 0.42 + b.y * k * 0.14, k * (x.sp === 'sedum' ? 0.07 : 0.12) * b.s * g, 0, 7);
+        ctx.fill();
+      }
+      ctx.fillStyle = mix(C.flowR, C.groundR, 0.75); ctx.fillRect(cx + ins, cy + k * 0.84, k - ins * 2, k * 0.06);
+      ctx.fillStyle = x.m < 0.15 ? C.refuse : C.flow; ctx.fillRect(cx + ins, cy + k * 0.84, (k - ins * 2) * x.m, k * 0.06);
+    }
+    // rails
+    ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
+    for (let r = 0; r <= ROWS; r++) { ctx.beginPath(); ctx.moveTo(X(0), Y(r) + 0.5); ctx.lineTo(X(COLS), Y(r) + 0.5); ctx.stroke(); }
+    for (let c = 0; c <= COLS; c++) { ctx.beginPath(); ctx.moveTo(X(c) + 0.5, Y(0)); ctx.lineTo(X(c) + 0.5, Y(ROWS)); ctx.stroke(); }
+    // roof, dock, street
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(X(-0.2), Y(0)); ctx.lineTo(X(COLS + 0.2), Y(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(X(-0.6), Y(ROWS) + 1); ctx.lineTo(X(COLS + 0.6), Y(ROWS) + 1); ctx.stroke();
+    ctx.lineWidth = 1; ctx.strokeStyle = C.muted;
+    for (const d of drones) ctx.strokeRect(X(d.home[0]) - k * 0.3, Y(-0.72) - k * 0.1, k * 0.6, k * 0.62);
+    // dimension lines
+    ctx.strokeStyle = C.ink; ctx.fillStyle = C.ink; ctx.lineWidth = 1;
+    const fs = Math.max(9, k * 0.34);
+    ctx.font = `${fs}px ${C.mono || 'monospace'}`; ctx.textBaseline = 'middle';
+    const dimY = Y(ROWS) + k * 0.7;
+    ctx.beginPath(); ctx.moveTo(X(0), dimY); ctx.lineTo(X(COLS), dimY);
+    for (const xx of [0, COLS]) { ctx.moveTo(X(xx), dimY - k * 0.2); ctx.lineTo(X(xx), dimY + k * 0.2); ctx.moveTo(X(xx) - k * 0.12, dimY + k * 0.12); ctx.lineTo(X(xx) + k * 0.12, dimY - k * 0.12); }
+    ctx.stroke();
+    ctx.textAlign = 'center'; ctx.fillStyle = C.ground; const lbl = '21.0 m · 14 bays';
+    const tw = ctx.measureText(lbl).width + 10; ctx.fillRect(X(COLS / 2) - tw / 2, dimY - fs * 0.7, tw, fs * 1.4);
+    ctx.fillStyle = C.ink; ctx.fillText(lbl, X(COLS / 2), dimY);
+    const dimX = X(COLS) + k * 0.7;
+    ctx.beginPath(); ctx.moveTo(dimX, Y(0)); ctx.lineTo(dimX, Y(ROWS));
+    for (const yy of [0, ROWS]) { ctx.moveTo(dimX - k * 0.2, Y(yy)); ctx.lineTo(dimX + k * 0.2, Y(yy)); ctx.moveTo(dimX - k * 0.12, Y(yy) + k * 0.12); ctx.lineTo(dimX + k * 0.12, Y(yy) - k * 0.12); }
+    ctx.stroke();
+    ctx.save(); ctx.translate(dimX, Y(ROWS / 2)); ctx.rotate(-Math.PI / 2);
+    const lbl2 = '30.0 m · 10 levels', tw2 = ctx.measureText(lbl2).width + 10;
+    ctx.fillStyle = C.ground; ctx.fillRect(-tw2 / 2, -fs * 0.7, tw2, fs * 1.4);
+    ctx.fillStyle = C.ink; ctx.fillText(lbl2, 0, 0); ctx.restore();
+    ctx.textAlign = 'right'; ctx.fillStyle = C.muted;
+    for (let r = 0; r < ROWS; r += 3) ctx.fillText(`L${ROWS - r}`, X(0) - k * 0.2, Y(r + 0.5));
+    ctx.fillText('L1', X(0) - k * 0.2, Y(ROWS - 0.5));
+    ctx.textAlign = 'left'; ctx.fillText('roof dock', X(0), Y(-1.25));
+    // routes, then drones
+    for (const d of drones) if (d.path.length) {
+      ctx.strokeStyle = d.state === 'fly' ? C.flow : C.muted; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(X(d.x), Y(d.y)); for (const [px, py] of d.path) ctx.lineTo(X(px), Y(py)); ctx.stroke();
+    }
+    for (const p of sprays) { ctx.fillStyle = C[p.col]; ctx.globalAlpha = Math.min(1, p.life * 2); ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), 1.7, 0, 7); ctx.fill(); }
+    ctx.globalAlpha = 1;
+    for (const d of drones) {
+      const dx = X(d.x), dy = Y(d.y), arm = k * 0.15;
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5;
+      for (const [ax, ay] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        ctx.beginPath(); ctx.moveTo(dx, dy); ctx.lineTo(dx + ax * arm, dy + ay * arm * 0.6); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(dx + ax * arm, dy + ay * arm * 0.6, k * 0.07, k * 0.028, 0, 0, 7); ctx.stroke();
+      }
+      ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(dx, dy, k * 0.09, 0, 7); ctx.fill();
+      ctx.fillStyle = d.state === 'work' ? (d.target && d.target.decay ? C.give : C.flow) : C.ground;
+      ctx.beginPath(); ctx.arc(dx, dy, k * 0.045, 0, 7); ctx.fill();
+    }
+  }
+
+  size();
+  window.addEventListener('resize', size);
+  if (window.ResizeObserver) new ResizeObserver(size).observe(cv);
+  // Warm up so the first still frame already shows drones at work.
+  for (let i = 0; i < 160; i++) step(0.05);
+  draw();
+  if (!reduce) {
+    let last = performance.now();
+    const frame = now => { const dt = Math.min(0.05, (now - last) / 1000); last = now; step(dt); draw(); requestAnimationFrame(frame); };
+    requestAnimationFrame(frame);
+  }
+})();
+</script>
+
+</body>
+</html>

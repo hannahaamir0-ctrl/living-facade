@@ -1,0 +1,1361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Play Living Facade: keep a 140-module green wall alive with a drone fleet, and let a language model propose moves.">
+<style>body{margin:0}</style>
+<title>Living Facade Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: drawing-sheet page; facade elevation canvas left, control column right, rules note below. */
+:root {
+  --ground: #eef0ea;
+  --ink: #1b1f1a;
+  --muted: #59625a;
+  --rule: #cdd3c8;
+  --sheet: #e0e4da;
+  --tray: #c6cdbf;
+  --leaf: #3d7838;
+  --leaf2: #79a03c;
+  --give: #d4903a;
+  --refuse: #c7361f;
+  --flow: #2f62a3;
+  --ok: #2f7d4f;
+  --focus: #2f62a3;
+  --night: #1d2b3c;
+  --fruit: #a3296a;
+  --feed: #8a5a2b;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #111411; --ink: #e3e8df; --muted: #98a093; --rule: #2b302a; --sheet: #1a1e19;
+    --tray: #2b3128; --leaf: #5fa457; --leaf2: #9cc15e; --give: #e0a24e; --refuse: #ff6a4f;
+    --flow: #7fa9d9; --ok: #5fb884; --focus: #7fa9d9; --night: #000000; --fruit: #e46aa6; --feed: #c99a63; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #111411; --ink: #e3e8df; --muted: #98a093; --rule: #2b302a; --sheet: #1a1e19;
+  --tray: #2b3128; --leaf: #5fa457; --leaf2: #9cc15e; --give: #e0a24e; --refuse: #ff6a4f;
+  --flow: #7fa9d9; --ok: #5fb884; --focus: #7fa9d9; --night: #000000; --fruit: #e46aa6; --feed: #c99a63; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 48px; display: grid; gap: 28px; }
+.eyebrow, .label { font-family: var(--mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+h1 { font-family: var(--display); font-weight: 600; font-size: clamp(34px, 6vw, 56px); line-height: 1; letter-spacing: -.01em; margin: 6px 0 12px; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 24px; margin: 0 0 10px; text-wrap: balance; }
+.lede { max-width: 66ch; margin: 0; color: var(--ink); }
+.lede b { font-weight: 500; }
+
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+@media (max-width: 880px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.canvas-panel { min-width: 0; display: grid; gap: 10px; }
+.canvas-wrap { position: relative; border: 1px solid var(--rule); background: var(--ground); }
+#wall { display: block; width: 100%; touch-action: manipulation; cursor: crosshair; }
+.probe { font-family: var(--mono); font-size: 12.5px; color: var(--muted); margin: 0; min-height: 1.5em; font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; display: inline-block; border-radius: 2px; }
+
+.banner { position: absolute; left: 10px; top: 10px; font-family: var(--mono); font-size: 12px; padding: 4px 8px; background: var(--give); color: var(--ground); border-radius: 2px; }
+.endcard { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--ground) 82%, transparent); padding: 16px; }
+.endcard > div { background: var(--ground); border: 1px solid var(--ink); padding: 20px 22px; max-width: 380px; display: grid; gap: 8px; }
+.endcard h3 { font-family: var(--display); font-size: 30px; margin: 0; line-height: 1.05; }
+.endcard p { margin: 0; }
+.endcard .stats { font-family: var(--mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.controls { display: grid; gap: 18px; min-width: 0; }
+.group { display: grid; gap: 8px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+button { font: 500 14px/1 var(--sans); color: var(--ink); background: transparent; border: 1px solid var(--ink); padding: 9px 14px; border-radius: 2px; cursor: pointer; }
+button:hover { background: var(--sheet); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+button.primary { background: var(--ink); color: var(--ground); }
+button.primary:hover { background: var(--muted); }
+.seg { display: flex; }
+.seg button { border-radius: 0; margin-left: -1px; padding: 8px 12px; font-family: var(--mono); font-size: 13px; }
+.seg button:first-child { margin-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
+.slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 14px; }
+.slider output { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--ink); }
+.slider small { grid-column: 1 / -1; color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+
+.readout { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; border-top: 1px solid var(--rule); padding-top: 12px; }
+.readout dt { color: var(--muted); }
+.readout dd { margin: 0; text-align: right; }
+.readout .good { color: var(--ok); } .readout .warn { color: var(--give); } .readout .bad { color: var(--refuse); }
+#spark { width: 100%; height: 56px; display: block; }
+.fleet { display: grid; gap: 4px; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.fleet .d { display: grid; grid-template-columns: 26px 1fr 1fr 1fr minmax(0, 1.8fr); gap: 8px; align-items: center; }
+.fleet .bar.feed i { background: var(--feed); }
+.fleet .bar { height: 6px; background: var(--sheet); position: relative; overflow: hidden; }
+.fleet .bar i { position: absolute; inset: 0 auto 0 0; background: var(--ink); }
+.fleet .bar.tank i { background: var(--flow); }
+.fleet .st { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fleet .head { color: var(--muted); }
+
+.rules { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; border-top: 1px solid var(--rule); padding-top: 22px; }
+@media (max-width: 760px) { .rules { grid-template-columns: minmax(0, 1fr); } }
+.rules ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; max-width: 62ch; }
+.rules p { margin: 0 0 10px; max-width: 62ch; }
+.rules li::marker { font-family: var(--mono); color: var(--muted); }
+
+.propose { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; border-top: 1px solid var(--rule); padding-top: 22px; align-items: start; }
+@media (max-width: 760px) { .propose { grid-template-columns: minmax(0, 1fr); } }
+.propose .group { gap: 12px; min-width: 0; }
+.note { margin: 0; color: var(--muted); font-size: 14px; max-width: 62ch; }
+.note.err { color: var(--refuse); }
+.field { display: grid; gap: 4px; font-size: 14px; }
+.field small { color: var(--muted); font-size: 12.5px; }
+.field input, .field textarea { font: 13px/1.45 var(--mono); color: var(--ink); background: var(--ground); border: 1px solid var(--rule); border-radius: 2px; padding: 8px 10px; width: 100%; min-width: 0; }
+.field textarea { resize: vertical; }
+.field input:focus-visible, .field textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+details summary { cursor: pointer; font-size: 14px; color: var(--muted); }
+.plog { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 300px; overflow-y: auto; font-size: 13px; }
+.plog li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 2px; }
+.plog .pill { font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 4px 6px; border-radius: 2px; align-self: start; color: var(--ground); }
+.plog .ok .pill { background: var(--ok); }
+.plog .no .pill { background: var(--refuse); }
+.plog .what { font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
+.plog .why { grid-column: 2; color: var(--muted); overflow-wrap: anywhere; }
+.plog .empty { display: block; color: var(--muted); border-style: dashed; }
+.refusal { font-family: var(--mono); font-size: 12.5px; padding: 8px 10px; background: var(--refuse); color: var(--ground); border-radius: 2px; }
+.grammar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; border-top: 1px solid var(--rule); padding-top: 22px; }
+@media (max-width: 760px) { .grammar { grid-template-columns: minmax(0, 1fr); } }
+.grammar pre { margin: 0; font: 12.5px/1.5 var(--mono); background: var(--sheet); padding: 12px; overflow-x: auto; border-radius: 2px; }
+.grammar p { margin: 0 0 10px; max-width: 62ch; }
+.codes { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; font-size: 13.5px; }
+.codes dt { font: 500 12px/1.6 var(--mono); color: var(--refuse); }
+.codes dd { margin: 0; }
+</style>
+
+<style>.sitebar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--ground);border-bottom:1px solid var(--rule)}.sitebar .in{max-width:1180px;margin:0 auto;padding-inline:20px;display:flex;align-items:center;gap:18px;min-height:52px;flex-wrap:wrap}.sitebar a{font:500 14px/1 var(--sans);color:var(--muted);text-decoration:none;padding-block:6px}.sitebar a:hover{color:var(--ink)}.sitebar .mk{font:600 17px/1 var(--display);color:var(--ink);margin-right:auto}</style>
+</head>
+<body>
+<header class="sitebar"><div class="in"><a class="mk" href="./">&larr; Living Facade</a><a href="./#how">How it works</a><a href="./#propose">Proposals</a><a href="./#brief">Brief</a></div></header>
+<main class="wrap">
+  <header>
+    <p class="eyebrow">Facade sketch · drone-tended green wall · south elevation</p>
+    <h1>Living Facade</h1>
+    <p class="lede">A 30&nbsp;m south facade carries <b>140 planted modules</b>. Sun, wind and pests dry and damage them a little every hour. A fleet of drones keeps them alive using <b>local rules only</b>: each drone sees just the modules within its sensing reach, takes the most urgent one nobody else has claimed, and flies back to the roof dock when its battery, water tank or fertilizer runs low. Tune the rules, then keep the wall at least <b>75% healthy</b> across a 14-day season.</p>
+  </header>
+
+  <section class="stage">
+    <div class="canvas-panel">
+      <div class="canvas-wrap">
+        <canvas id="wall" aria-label="Elevation of the green wall with drones"></canvas>
+        <div id="banner" class="banner" hidden></div>
+        <div id="endcard" class="endcard" hidden>
+          <div>
+            <p class="label" id="endLabel">Season complete</p>
+            <h3 id="endTitle">Thriving</h3>
+            <p id="endText"></p>
+            <p class="stats" id="endStats"></p>
+            <div class="row"><button class="primary" id="again">Run another season</button></div>
+          </div>
+        </div>
+      </div>
+      <div id="refusal" class="refusal" role="status" aria-live="polite" hidden></div>
+      <p id="probe" class="probe">Hover a module to read it, or near a drone to see its sensing reach. Click to flag a module: flagged modules are visible to every drone.</p>
+      <div class="legend" aria-label="Legend">
+        <span><i class="sw" style="background:var(--leaf)"></i>Healthy</span>
+        <span><i class="sw" style="background:var(--give)"></i>Stressed</span>
+        <span><i class="sw" style="background:var(--refuse)"></i>Pests</span>
+        <span><i class="sw" style="background:var(--fruit);border-radius:50%"></i>Berries</span>
+        <span><i class="sw" style="background:var(--flow)"></i>Soil moisture</span>
+        <span><i class="sw" style="background:var(--feed)"></i>Nutrients</span>
+        <span><i class="sw" style="border:1.5px dashed var(--focus)"></i>Flagged</span>
+        <span><i class="sw" style="background:var(--muted)"></i>Dead, waiting to be revived</span>
+      </div>
+    </div>
+
+    <aside class="controls">
+      <div class="group">
+        <div class="row">
+          <button id="run" class="primary">Start season</button>
+          <button id="reset">Reset</button>
+        </div>
+        <div class="seg" role="group" aria-label="Simulation speed">
+          <button data-speed="1" aria-pressed="true">1×</button>
+          <button data-speed="3" aria-pressed="false">3×</button>
+          <button data-speed="8" aria-pressed="false">8×</button>
+          <button data-speed="20" aria-pressed="false">20×</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="slider" for="fleet">Fleet size <output id="fleetOut">6 drones</output>
+          <input type="range" id="fleet" min="1" max="10" value="6">
+        </label>
+        <label class="slider" for="trigger">Water trigger <output id="triggerOut">40%</output>
+          <input type="range" id="trigger" min="20" max="70" step="5" value="40">
+          <small>Drones water a module once its soil drops below this. Too high wastes flights and drowns roots.</small>
+        </label>
+        <label class="slider" for="reach">Sensing reach <output id="reachOut">5 modules</output>
+          <input type="range" id="reach" min="2" max="15" value="5">
+          <small>How far each drone can see. Short reach means clustered, efficient work but blind spots.</small>
+        </label>
+      </div>
+
+      <div class="group">
+        <p class="label">Stress test</p>
+        <div class="row">
+          <button id="heat">Heatwave</button>
+          <button id="pests">Pest outbreak</button>
+        </div>
+      </div>
+
+      <dl class="readout" id="readout"></dl>
+      <div class="group">
+        <p class="label">Healthy modules over the season</p>
+        <canvas id="spark" aria-label="Healthy modules over time"></canvas>
+      </div>
+      <div class="group">
+        <p class="label">Fleet</p>
+        <div class="fleet" id="fleetList"></div>
+      </div>
+    </aside>
+  </section>
+
+  <section class="propose" aria-labelledby="proposeTitle">
+    <div class="group">
+      <h2 id="proposeTitle">Propose a move</h2>
+      <p class="note">A language model reads the state of the wall and proposes moves for the fleet. The simulation checks every move before it runs. A move that cannot work is refused, and the reason is drawn on the wall where it fails.</p>
+      <div class="row">
+        <button id="suggest" class="primary">Suggest next move</button>
+        <button id="copyPrompt">Copy prompt</button>
+        <button id="tryBad">Try an impossible move</button>
+      </div>
+      <label class="field" for="apiKey">Claude API key <small>Optional. Kept in this tab's memory only and sent only to the Claude API.</small>
+        <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…">
+      </label>
+      <p class="note" id="suggestStatus">With a key, Suggest asks Claude directly. Without one, it copies a prompt: paste it into any chatbot, then paste the reply below and press Apply.</p>
+      <label class="field" for="proposal">Proposal
+        <textarea id="proposal" rows="6" spellcheck="false" placeholder='{"moves":[{"type":"dispatch","drone":"D2","module":"L7·B4","task":"water","why":"soil at 12%"}]}'></textarea>
+      </label>
+      <div class="row"><button id="applyProposal">Apply proposal</button></div>
+      <details>
+        <summary>Show the last prompt</summary>
+        <label class="field" for="promptOut"><span class="note">The exact text sent to the model.</span>
+          <textarea id="promptOut" rows="10" readonly spellcheck="false"></textarea>
+        </label>
+      </details>
+    </div>
+    <div class="group">
+      <p class="label">Proposal log</p>
+      <ol class="plog" id="plog"></ol>
+      <p class="label">Trace</p>
+      <dl class="readout" id="trace"></dl>
+      <div class="row"><button id="copyTrace">Copy trace as JSON</button></div>
+      <p class="note" id="traceStatus"></p>
+    </div>
+  </section>
+
+  <section class="grammar" aria-labelledby="grammarTitle">
+    <div>
+      <h2 id="grammarTitle">Proposal format</h2>
+      <p>A proposal is JSON with one to three moves. Modules are named by level and bay: L1 is the street level, L10 the top; B1 is the left bay, B14 the right. Drones are D1 to D10.</p>
+<pre>{"moves": [
+  {"type": "dispatch", "drone": "D3", "module": "L7·B4",
+   "task": "water | feed | treat | revive", "why": "…"},
+  {"type": "set", "param": "fleet | trigger | reach",
+   "value": 8, "why": "…"},
+  {"type": "flag", "module": "L2·B11", "why": "…"},
+  {"type": "wait", "why": "…"}
+]}</pre>
+      <p>A dispatched drone drops what it was doing, claims the module and flies there on the rails. Its route is drawn in blue with the proposal number.</p>
+    </div>
+    <div>
+      <h2>Why a move is refused</h2>
+      <dl class="codes">
+        <dt>UNREACHABLE</dt><dd>Not enough battery for the trip, the work and the flight home. The route is drawn with an X where the battery runs out.</dd>
+        <dt>JAM</dt><dd>Another drone has already claimed that module. Both drones are circled.</dd>
+        <dt>BUSY</dt><dd>The drone is in the middle of a job.</dd>
+        <dt>OVERWATER</dt><dd>Soil is above 90% moisture. More water would rot the roots.</dd>
+        <dt>OVERFEED</dt><dd>Nutrients are above 80%. More fertilizer would burn the plant.</dd>
+        <dt>NOTHING TO DO</dt><dd>No pests to treat, or nothing decaying to revive.</dd>
+        <dt>DEAD</dt><dd>The module is dead. Only revive works on it.</dd>
+        <dt>EMPTY</dt><dd>The drone's water tank or fertilizer hopper is too low for the job.</dd>
+        <dt>DOCK FULL</dt><dd>The roof has 10 pads. A bigger fleet has nowhere to land.</dd>
+        <dt>OUT OF RANGE</dt><dd>A setting outside what the controls allow.</dd>
+        <dt>UNREADABLE</dt><dd>The reply could not be read as a proposal, or names a drone, module or task that does not exist.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="rules">
+    <div>
+      <h2>How a drone decides</h2>
+      <ol>
+        <li>Scan every module within sensing reach, plus any module you flagged.</li>
+        <li>Skip modules another drone has already claimed.</li>
+        <li>Score the rest: decaying and dead modules need reviving, pests need treating, dry soil needs water, hungry soil needs fertilizer. Closer modules score higher.</li>
+        <li>Check the battery can cover the flight there, the work, and the flight home. If not, return to the dock.</li>
+        <li>Claim the best module and fly there along the wall's joints: across on the slab lines between levels, up and down on the bay lines between modules.</li>
+        <li>Give way to drones that are working or docked, and to lower-numbered drones: hold position, step aside if one needs to pass, and take a different rail if the way stays blocked.</li>
+        <li>Do the work, then scan again from where you are.</li>
+        <li>If nothing is in view, fly home. After an hour on the dock, fly a scouting run to a random spot.</li>
+      </ol>
+    </div>
+    <div>
+      <h2>The wall</h2>
+      <p>Ten levels of 3&nbsp;m, fourteen bays of 1.5&nbsp;m. Sedum mats sit on the exposed upper levels, sedge grasses in the middle, shade ferns near the street, with climbing ivy scattered throughout. Each species dries out at its own rate and wilts at its own moisture threshold.</p>
+      <p>A neighbouring tower shades the lower-left of the wall until late morning. Wind is stronger near the parapet, which slows drones and costs them battery. Pests spread to adjacent modules if left alone.</p>
+      <p>No drone sees the whole wall unless you give it the reach. The pattern of care that emerges comes from these few rules.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+const COLS = 14, ROWS = 10, DAYS = 14, START_H = 6, END_H = START_H + DAYS * 24;
+const SP = {
+  sedum: { name: 'Sedum mat', evap: 0.55, wilt: 0.14 },
+  grass: { name: 'Sedge grass', evap: 1.0, wilt: 0.24 },
+  ivy:   { name: 'Climbing ivy', evap: 0.8, wilt: 0.22 },
+  fern:  { name: 'Shade fern', evap: 1.3, wilt: 0.34 },
+};
+// Game hours that pass per real second at 1×. Drones fly 5 modules per game hour,
+// so at 1× a drone crosses 2.5 modules a second and a full season takes about 11 minutes.
+const HOURS_PER_SECOND = 0.5;
+const TANK_DOSE = 1 / 6; // an 18 L tank, 3 L per watering
+const FEED_DOSE = 1 / 8; // a 4 kg hopper, 0.5 kg of slow-release fertilizer per feed
+const FEED_TRIGGER = 0.3; // drones feed a module once its nutrients drop below this
+const TASK_NAME ={ water: 'Watering', treat: 'Treating pests', revive: 'Reviving', feed: 'Feeding' };
+
+const $ = id => document.getElementById(id);
+const wall = $('wall'), ctx = wall.getContext('2d');
+const spark = $('spark'), sctx = spark.getContext('2d');
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+let rand = Math.random;
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- colors from tokens ----------
+const C = {};
+function hex2rgb(h) { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(x => x + x).join(''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function readTokens() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['ground','ink','muted','rule','sheet','tray','leaf','leaf2','give','refuse','flow','ok','focus','night','fruit','feed']) {
+    const v = cs.getPropertyValue('--' + k).trim();
+    C[k] = v; C[k + 'RGB'] = hex2rgb(v);
+  }
+}
+const mix = (a, b, t) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',')})`;
+const rgba = (a, al) => `rgba(${a[0]},${a[1]},${a[2]},${al})`;
+readTokens();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readTokens);
+new MutationObserver(readTokens).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+// ---------- environment ----------
+const sun = h => (h > 6 && h < 18) ? Math.sin(Math.PI * (h - 6) / 12) : 0;
+function shaded(r, c, h) {
+  if (h < 6 || h >= 11 || r < 3) return false;
+  return c < Math.floor((11 - h) / 5 * COLS * 0.6);
+}
+function exposure(r, c, h) {
+  const e = 0.55 + 0.45 * (1 - r / (ROWS - 1));
+  return shaded(r, c, h) ? e * 0.25 : e;
+}
+const cellName = c => `L${ROWS - c.r}·B${c.c + 1}`;
+
+// ---------- state ----------
+let S;
+function pickSpecies(r) {
+  const f = r / (ROWS - 1);
+  if (rand() < 0.15) return 'ivy';
+  return f < 0.3 ? 'sedum' : f < 0.7 ? 'grass' : 'fern';
+}
+function newState() {
+  rand = mulberry32((Math.random() * 1e9) | 0);
+  const cells = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const sp = pickSpecies(r);
+    const blobs = Array.from({ length: 9 }, () => ({ x: rand() * 2 - 1, y: rand() * 2 - 1, s: 0.7 + rand() * 0.6 }));
+    const fruiting = rand() < 0.28;
+    cells.push({ r, c, sp, m: 0.45 + rand() * 0.45, health: 0.85 + rand() * 0.15, growth: 0.5 + rand() * 0.35, pest: 0, dead: false, flag: false, claimed: -1, blobs,
+                 fruiting, fruit: fruiting ? rand() * 3 : 0, n: 0.35 + rand() * 0.6 });
+  }
+  S = { cells, drones: [], t: START_H, running: false, started: false, speed: S ? S.speed : 1,
+        trigger: +$('trigger').value / 100, reach: +$('reach').value,
+        water: 0, fert: 0, energy: 0, revived: 0,
+        done: { water: 0, feed: 0, treat: 0, revive: 0 }, proposals: [], marks: [], heat: 0, wind: 0.4, history: [], scoreSum: 0, scoreT: 0, over: false, sprays: [] };
+  setFleet(+$('fleet').value);
+  for (const c of cells) if (rand() < 0.18) c.m = 0.2 + rand() * 0.15;
+  for (let i = 0; i < 3; i++) seedPest(0.14);
+  $('refusal').hidden = true;
+  renderLog();
+}
+function dockPos(i) { const n = S.drones.length; return { x: COLS / 2 + (i - (n - 1) / 2) * 1.05, y: -0.72 }; }
+function setFleet(n) {
+  while (S.drones.length > n) { const d = S.drones.pop(); release(d); }
+  while (S.drones.length < n) {
+    const i = S.drones.length;
+    S.drones.push({ i, x: 0, y: -0.72, state: 'standby', wait: 0.05 + i * 0.1, battery: 1, tank: 1, fert: 1, target: null, task: null, workT: 0 });
+  }
+  S.drones.forEach(d => { if (d.state === 'standby' || d.state === 'charge') { const p = dockPos(d.i); d.x = p.x; d.y = p.y; } });
+}
+function release(d) { if (d.target && d.target.claimed === d.i) d.target.claimed = -1; d.target = null; d.task = null; d.prop = null; }
+const at = (r, c) => (r >= 0 && r < ROWS && c >= 0 && c < COLS) ? S.cells[r * COLS + c] : null;
+function seedPest(v) {
+  const alive = S.cells.filter(c => !c.dead);
+  if (alive.length) { const c = alive[(rand() * alive.length) | 0]; c.pest = Math.max(c.pest, v); return c; }
+}
+
+// ---------- drones ----------
+function needOf(c) {
+  if (c.dead) return { type: 'revive', need: 0.9, dur: 2.0 };
+  // Decay only shows up to a drone's sensors once the leaves visibly brown.
+  if (c.decay && c.health < 0.6) return { type: 'revive', need: 0.75 + (1 - c.health) * 0.5, dur: 1.0 };
+  if (c.pest > 0.1) return { type: 'treat', need: 0.7 + c.pest, dur: 0.5 };
+  if (c.n < FEED_TRIGGER && c.m >= S.trigger) return { type: 'feed', need: 0.35 + (FEED_TRIGGER - c.n) * 2, dur: 0.3 };
+  if (c.m < S.trigger) return { type: 'water', need: 0.3 + (S.trigger - c.m) / S.trigger + (c.m < SP[c.sp].wilt ? 0.8 : 0), dur: 0.25 };
+  return null;
+}
+const drainPerCell = y => 0.011 * (1 + 0.9 * S.wind * (1 - clamp(y / ROWS, 0, 1)));
+function decide(d) {
+  if (d.battery < 0.2) return goHome(d);
+  let best = null, bs = 0, bt = null;
+  for (const c of S.cells) {
+    if (c.claimed >= 0 && c.claimed !== d.i) continue;
+    const task = needOf(c); if (!task) continue;
+    if (task.type === 'water' && d.tank < TANK_DOSE - 1e-6) continue;
+    if (task.type === 'feed' && d.fert < FEED_DOSE - 1e-6) continue;
+    const dist = Math.hypot(c.c + 0.5 - d.x, c.r + 0.5 - d.y);
+    if (!c.flag && dist > S.reach) continue;
+    const score = task.need / (1 + 0.12 * dist) * (c.flag ? 4 : 1);
+    if (score > bs) { bs = score; best = c; bt = task; }
+  }
+  if (!best) return (d.tank < TANK_DOSE - 1e-6 || d.fert < FEED_DOSE - 1e-6 || !atDock(d)) ? goHome(d) : standby(d);
+  const home = dockPos(d.i), tx = best.c + 0.5, ty = best.r + 0.5;
+  const grid = (ax, ay, bx, by) => Math.abs(ax - bx) + Math.abs(ay - by) + 1;
+  const cost = (grid(d.x, d.y, tx, ty) + grid(tx, ty, home.x, home.y)) * drainPerCell(ty) + bt.dur * 0.03 + 0.06;
+  if (d.battery < cost) return goHome(d);
+  best.claimed = d.i; d.target = best; d.task = bt; d.state = 'fly'; route(d, tx, ty);
+}
+const atDock = d => { const p = dockPos(d.i); return Math.hypot(p.x - d.x, p.y - d.y) < 0.05; };
+function goHome(d) { release(d); const p = dockPos(d.i); d.state = 'return'; route(d, p.x, p.y); }
+function standby(d) { if (d.state !== 'standby') { d.state = 'standby'; d.wait = 1; } }
+
+// Flight rails: drones only fly along the joints of the wall. Horizontal runs follow the
+// slab lines between levels (y = whole number), vertical runs follow the bay lines between
+// modules (x = whole number). A short hop at each end takes the drone off or onto a module.
+// Variants pick a neighbouring bay line or approach from the other side, used when blocked.
+function route(d, tx, ty, variant = 0) {
+  const down = ty > d.y, right = tx > d.x;
+  const ey = clamp(down ? Math.ceil(d.y - 1e-6) : Math.floor(d.y + 1e-6), 0, ROWS);
+  let bx = clamp(Math.round(d.x + (right ? 0.01 : -0.01)), 0, COLS);
+  if (variant & 1) bx = clamp(bx + (right ? 1 : -1), 0, COLS);
+  let ly = ty < 0 ? 0 : ((variant & 2) ? !down : down) ? Math.floor(ty) : Math.ceil(ty);
+  ly = clamp(ly, 0, ROWS);
+  const pts = [[d.x, ey], [bx, ey], [bx, ly], [tx, ly], [tx, ty]];
+  d.path = []; let px0 = d.x, py0 = d.y;
+  for (const p of pts) if (Math.hypot(p[0] - px0, p[1] - py0) > 1e-6) { d.path.push(p); px0 = p[0]; py0 = p[1]; }
+  d.tx = tx; d.ty = ty; d.variant = variant; d.blockT = 0; d.replan = false;
+}
+// Would this step bring the drone closer than the safe gap to a drone it must give way to?
+// Working and docked drones always have right of way; among flying drones the lower number goes first.
+function blocked(d, nx, ny) {
+  for (const o of S.drones) {
+    if (o === d || !(anchored(o) || o.i < d.i)) continue;
+    const dn = Math.hypot(nx - o.x, ny - o.y);
+    if (dn < sepOf(d, o) - 1e-3 && dn < Math.hypot(d.x - o.x, d.y - o.y)) return true;
+  }
+  return false;
+}
+function moveTo(d, dt) {
+  if (d.replan || !d.path) route(d, d.tx, d.ty, d.variant || 0);
+  const speed = 5 * (1 - 0.35 * S.wind * (1 - clamp(d.y / ROWS, 0, 1)));
+  let budget = speed * dt;
+  while (budget > 1e-9 && d.path.length) {
+    const [wx, wy] = d.path[0], dx = wx - d.x, dy = wy - d.y, dist = Math.hypot(dx, dy);
+    if (dist < 1e-6) { d.path.shift(); continue; }
+    const s = Math.min(budget, dist), nx = d.x + dx / dist * s, ny = d.y + dy / dist * s;
+    if (blocked(d, nx, ny)) {
+      // Hold position. If still held after a while, try a different rail.
+      d.blockT += dt;
+      if (d.blockT > 0.3) route(d, d.tx, d.ty, 1 + ((rand() * 3) | 0));
+      return false;
+    }
+    const used = s * drainPerCell(d.y);
+    d.battery = Math.max(0, d.battery - used); S.energy += used * 0.5;
+    d.x = nx; d.y = ny; budget -= s;
+    if (s >= dist - 1e-9) { d.x = wx; d.y = wy; d.path.shift(); }
+  }
+  d.blockT = 0;
+  if (!d.path.length) { d.path = null; return true; }
+  return false;
+}
+function applyTask(d) {
+  const c = d.target, t = d.task.type;
+  S.done[t]++; c.visited = S.t;
+  if (t === 'water') {
+    c.m = Math.min(1, c.m + 0.65); d.tank = Math.max(0, d.tank - TANK_DOSE); S.water += 3;
+    // Fertigation: a module running low on nutrients gets fertilizer mixed into its water.
+    if (c.n < 0.5 && d.fert >= FEED_DOSE - 1e-6) { c.n = Math.min(1, c.n + 0.7); d.fert -= FEED_DOSE; S.fert += 0.5; }
+  }
+  else if (t === 'feed') { c.n = Math.min(1, c.n + 0.7); d.fert = Math.max(0, d.fert - FEED_DOSE); S.fert += 0.5; }
+  else if (t === 'treat') c.pest = 0;
+  else if (t === 'revive') {
+    // Prune the rot, feed the roots. A dead module regrows from its root stock.
+    if (c.dead) { c.dead = false; c.health = 0.55; c.growth = 0.1; c.m = Math.max(c.m, 0.7); }
+    else c.health = Math.min(1, Math.max(c.health, 0.5) + 0.2);
+    // A revival includes a dose of fertilizer when the drone has some on board.
+    if (d.fert >= FEED_DOSE - 1e-6) { c.n = Math.max(c.n, 0.7); d.fert -= FEED_DOSE; S.fert += 0.5; }
+    c.decay = false; c.pest = 0; S.revived++;
+  }
+  c.flag = false;
+}
+// Pick a rail crossing to scout that is clear of every other drone and every other drone's destination.
+function scoutTarget(d) {
+  for (let tries = 0; tries < 12; tries++) {
+    const tx = 1 + ((rand() * (COLS - 1)) | 0), ty = 1 + ((rand() * (ROWS - 1)) | 0);
+    const clear = S.drones.every(o => o === d || (Math.hypot(o.x - tx, o.y - ty) >= 1 && (o.state === 'standby' || o.state === 'charge' || Math.hypot(o.tx - tx, o.ty - ty) >= 1)));
+    if (clear) { d.state = 'scout'; route(d, tx, ty); return; }
+  }
+}
+
+// Safety net behind the give-way rule. A drone with right of way never yields, so a drone
+// in its path is nudged clear and re-plans its rail route.
+// Minimum centre-to-centre gaps, in module widths. A drone is drawn about 0.45 wide, so two
+// flying drones keep about 0.3 of clear space and a drone near a working or docked one keeps
+// about 0.15. Rails pass 0.5 from a working drone, so a flying drone waits or re-routes
+// rather than squeezing past a drone at work on the next module.
+const SEP_FLY = 0.75, SEP_WORK = 0.6;
+const anchored = d => d.state === 'work' || d.state === 'standby' || d.state === 'charge';
+const sepOf = (a, b) => (anchored(a) || anchored(b)) ? SEP_WORK : SEP_FLY;
+function separate() {
+  const D = S.drones;
+  for (let iter = 0; iter < 10; iter++) {
+    for (let i = 0; i < D.length; i++) for (let j = i + 1; j < D.length; j++) {
+      const a = D[i], b = D[j], sep = sepOf(a, b);
+      let dx = a.x - b.x, dy = a.y - b.y, dist = Math.hypot(dx, dy);
+      if (dist >= sep) continue;
+      const fa = anchored(a), fb = anchored(b);
+      if (dist < 1e-6) { dx = 0.01; dy = 0.007; dist = Math.hypot(dx, dy); }
+      const nx = dx / dist, ny = dy / dist, over = sep - dist;
+      // The drone that must give way is the one that moves (a.i < b.i always here).
+      // Two parked drones should never meet; if they do, the higher number moves.
+      const wa = (fa && !fb) ? 0 : (fb && !fa) ? 1 : 0, wb = 1 - wa;
+      const side = over * 0.35;
+      a.x += (nx * over - ny * side) * wa; a.y += (ny * over + nx * side) * wa;
+      b.x -= (nx * over - ny * side) * wb; b.y -= (ny * over + nx * side) * wb;
+      if (wa) a.replan = true;
+      if (wb) b.replan = true;
+    }
+    // Keep everyone over the drawing; a drone pinned at an edge pushes its neighbour instead on the next pass.
+    for (const d of D) { d.x = clamp(d.x, -0.6, COLS + 0.6); d.y = clamp(d.y, -1.3, ROWS + 0.5); }
+  }
+}
+
+function droneStep(d, dt) {
+  switch (d.state) {
+    case 'standby': {
+      d.battery = Math.min(1, d.battery + 0.7 * dt); d.tank = Math.min(1, d.tank + 2 * dt); d.fert = Math.min(1, d.fert + 2 * dt);
+      d.wait -= dt;
+      if (d.battery > 0.6) { decide(d); if (d.state === 'standby' && d.wait <= 0 && d.battery > 0.9) scoutTarget(d); }
+      break;
+    }
+    case 'charge':
+      d.battery = Math.min(1, d.battery + 0.7 * dt); d.tank = Math.min(1, d.tank + 2 * dt); d.fert = Math.min(1, d.fert + 2 * dt);
+      if (d.battery > 0.97 && d.tank > 0.99 && d.fert > 0.99) { d.state = 'standby'; d.wait = 1; }
+      break;
+    case 'scout':
+      if (moveTo(d, dt) || Math.hypot(d.tx - d.x, d.ty - d.y) < 1) decide(d);
+      break;
+    case 'fly':
+      if (d.target.claimed !== d.i) { decide(d); break; }
+      if (moveTo(d, dt)) { d.state = 'work'; d.workT = d.task.dur; }
+      break;
+    case 'work': {
+      d.workT -= dt; const used = 0.03 * dt; d.battery = Math.max(0, d.battery - used); S.energy += used * 0.5;
+      if ((d.task.type === 'water' || d.task.type === 'feed') && rand() < 0.6) S.sprays.push({ x: d.x + (rand() - 0.5) * 0.4, y: d.y + 0.1, vy: 0.6 + rand() * 0.6, life: 0.35, feed: d.task.type === 'feed' });
+      if (d.workT <= 0) { applyTask(d); release(d); d.state = 'idle'; decide(d); }
+      break;
+    }
+    case 'idle': decide(d); break;
+    case 'return':
+      if (moveTo(d, dt)) d.state = 'charge';
+      break;
+  }
+}
+
+// ---------- simulation step ----------
+function step(dt) {
+  const h = S.t % 24, s = sun(h), heatM = S.heat > 0 ? 1.9 : 1;
+  S.wind = clamp(0.38 + 0.25 * Math.sin(S.t / 9) + 0.15 * Math.sin(S.t / 2.3), 0, 1);
+  S.heat = Math.max(0, S.heat - dt);
+  for (const c of S.cells) {
+    if (c.dead) continue;
+    const sp = SP[c.sp], top = 1 - c.r / (ROWS - 1);
+    const evap = 0.024 * sp.evap * (0.35 + 1.1 * s * exposure(c.r, c.c, h)) * heatM * (1 + 0.3 * S.wind * top);
+    c.m = Math.max(0, c.m - evap * dt);
+    const stress = Math.max(0, sp.wilt - c.m);
+    // Struggling plants go dormant: below 30% health they lose health at half the rate.
+    const hardy = c.health < 0.3 ? 0.5 : 1;
+    // Natural decay (root rot, old growth, fungus) happens even with good care, until a drone revives the module.
+    if (c.decay) { c.health -= 0.16 * hardy * dt; c.growth = Math.max(0.05, c.growth - 0.05 * dt); }
+    if (stress > 0) c.health -= stress * 0.15 * hardy * dt;
+    else if (c.m > 0.96) c.health -= 0.012 * dt;
+    else if (c.pest < 0.05 && !c.decay) c.health = Math.min(1, c.health + 0.045 * dt);
+    if (c.pest > 0) {
+      c.pest = Math.min(1, c.pest + (0.08 * c.pest + 0.006) * dt);
+      c.health -= c.pest * 0.012 * hardy * dt;
+      if (rand() < c.pest * 0.06 * dt) {
+        const n = [[1,0],[-1,0],[0,1],[0,-1]][(rand() * 4) | 0];
+        const nb = at(c.r + n[0], c.c + n[1]);
+        if (nb && !nb.dead && nb.pest < 0.05) nb.pest = 0.06;
+      }
+    }
+    // Growing plants draw down nutrients, faster in sun. Hungry plants grow slowly, stop fruiting and weaken.
+    c.n = Math.max(0, c.n - (0.0015 + 0.005 * s * c.growth) * dt);
+    const fed = c.n < FEED_TRIGGER ? 0.4 : 1;
+    if (c.n < 0.1) c.health -= (0.1 - c.n) * 0.25 * hardy * dt;
+    if (c.health > 0.55) c.growth = Math.min(1, c.growth + (0.01 * s * c.health + (c.growth < 0.6 && !c.decay ? 0.03 : 0)) * fed * dt);
+    else if (c.health < 0.35) c.growth = Math.max(0.05, c.growth - 0.008 * dt);
+    if (c.fruiting) {
+      if (c.health > 0.7 && c.growth > 0.5 && c.n >= FEED_TRIGGER) c.fruit = Math.min(5, c.fruit + 0.05 * s * dt);
+      else if (c.health < 0.5) c.fruit = Math.max(0, c.fruit - 0.2 * dt);
+    }
+    if (c.health <= 0) { c.dead = true; c.decay = false; c.health = 0; c.pest = 0; c.growth = 0; c.fruit = 0; }
+  }
+  if (rand() < 0.07 * dt) seedPest(0.06);
+  if (rand() < 0.45 * heatM * dt) {
+    const ok = S.cells.filter(c => !c.dead && !c.decay && c.health > 0.6);
+    if (ok.length) ok[(rand() * ok.length) | 0].decay = true;
+  }
+  for (const d of S.drones) droneStep(d, dt);
+  separate();
+  for (const p of S.sprays) { p.y += p.vy * dt * 2; p.life -= dt; }
+  S.sprays = S.sprays.filter(p => p.life > 0);
+
+  const hf = healthyFrac();
+  S.scoreSum += hf * dt; S.scoreT += dt;
+  const last = S.history[S.history.length - 1];
+  if (!last || S.t - last.t >= 0.5) S.history.push({ t: S.t, v: hf });
+  S.t += dt;
+  if (hf < 0.35) endSeason(true);
+  else if (S.t >= END_H) endSeason(false);
+}
+const healthyFrac = () => S.cells.filter(c => !c.dead && c.health > 0.5).length / S.cells.length;
+
+function endSeason(failed) {
+  S.over = true; S.running = false; $('run').textContent = 'Start season';
+  const avg = S.scoreT ? S.scoreSum / S.scoreT : healthyFrac();
+  const day = Math.floor((S.t - START_H) / 24) + 1;
+  let title, text;
+  if (failed) { title = 'Facade failed'; text = `Fewer than 35% of modules were healthy on day ${day}. Try more drones, a longer reach, or a higher water trigger.`; }
+  else if (avg >= 0.9) { title = 'Thriving'; text = 'The wall stayed lush all season. Can you hold it with fewer drones?'; }
+  else if (avg >= 0.75) { title = 'Holding'; text = 'The wall met the 75% target. Look at the sparkline for the days it dipped.'; }
+  else if (avg >= 0.55) { title = 'Patchy'; text = 'The wall survived but missed the 75% target. Watch where the bare patches formed.'; }
+  else { title = 'Struggling'; text = 'Large parts of the wall died back. The drones could not keep up.'; }
+  $('endLabel').textContent = failed ? `Day ${day} of ${DAYS}` : `Season complete · ${DAYS} days`;
+  $('endTitle').textContent = title;
+  $('endText').textContent = text;
+  $('endStats').textContent = `Season score ${(avg * 100).toFixed(0)}% · ${S.drones.length} drones · ${S.revived} revived · ${Math.round(S.water)} L water · ${Math.round(S.fert)} kg fertilizer · ${S.energy.toFixed(1)} kWh`;
+  $('endcard').hidden = false;
+}
+
+// ---------- rendering ----------
+let geo = {};
+function resize() {
+  const w = wall.parentElement.clientWidth, dpr = window.devicePixelRatio || 1;
+  const cell = w / (COLS + 1.3);
+  const h = cell * (ROWS + 2.2);
+  wall.width = Math.round(w * dpr); wall.height = Math.round(h * dpr); wall.style.height = h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  geo = { w, h, cell, x0: cell * 1.0, y0: cell * 1.45 };
+  const sw = spark.clientWidth; spark.width = Math.round(sw * dpr); spark.height = Math.round(56 * dpr);
+  sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+const px = x => geo.x0 + x * geo.cell, py = y => geo.y0 + y * geo.cell;
+
+function drawPlant(c, X, Y, k) {
+  if (c.dead) {
+    ctx.strokeStyle = C.muted; ctx.lineWidth = 1.2;
+    for (let i = 0; i < 4; i++) { const b = c.blobs[i]; ctx.beginPath(); ctx.moveTo(X + b.x * k * 0.3, Y + k * 0.32); ctx.lineTo(X + b.x * k * 0.34 + 2, Y + k * 0.18); ctx.stroke(); }
+    return;
+  }
+  const base = c.sp === 'sedum' ? C.leaf2RGB : c.sp === 'grass' ? hex2rgb('#000000').map((_, i) => (C.leafRGB[i] + C.leaf2RGB[i]) / 2) : c.sp === 'ivy' ? C.leafRGB.map((v, i) => v + (C.inkRGB[i] - v) * 0.22) : C.leafRGB;
+  const stress = clamp((1 - c.health) * 1.4, 0, 1);
+  const col = mix(base, C.giveRGB, stress);
+  const g = 0.45 + 0.55 * c.growth;
+  ctx.fillStyle = col; ctx.strokeStyle = col;
+  if (c.sp === 'sedum') {
+    for (const b of c.blobs) { ctx.beginPath(); ctx.arc(X + b.x * k * 0.32, Y + k * 0.12 + b.y * k * 0.18, k * 0.07 * b.s * g, 0, 7); ctx.fill(); }
+  } else if (c.sp === 'grass') {
+    ctx.lineWidth = Math.max(1, k * 0.045); ctx.lineCap = 'round';
+    for (let i = 0; i < 7; i++) { const b = c.blobs[i]; ctx.beginPath(); ctx.moveTo(X + b.x * k * 0.3, Y + k * 0.3); ctx.quadraticCurveTo(X + b.x * k * 0.3, Y, X + b.x * k * 0.3 + b.y * k * 0.15, Y + k * 0.3 - k * 0.62 * g * b.s * 0.8); ctx.stroke(); }
+  } else if (c.sp === 'fern') {
+    for (let i = 0; i < 5; i++) { const b = c.blobs[i]; ctx.beginPath(); ctx.ellipse(X + b.x * k * 0.24, Y + b.y * k * 0.14, k * 0.2 * g * b.s, k * 0.11 * g * b.s, b.x, 0, 7); ctx.fill(); }
+  } else {
+    for (let i = 0; i < 4; i++) { const b = c.blobs[i]; ctx.beginPath(); ctx.arc(X + b.x * k * 0.25, Y + b.y * k * 0.12, k * 0.13 * g * b.s, 0, 7); ctx.fill(); }
+    ctx.lineWidth = Math.max(1, k * 0.035);
+    for (let i = 4; i < 6; i++) { const b = c.blobs[i]; const sx = X + b.x * k * 0.3; ctx.beginPath(); ctx.moveTo(sx, Y + k * 0.1); ctx.lineTo(sx + b.y * 3, Y + k * 0.1 + k * 0.55 * c.growth); ctx.stroke(); }
+  }
+  const nf = Math.floor(c.fruit);
+  if (nf > 0) {
+    const fr = Math.max(2.2, k * 0.075);
+    for (let i = 0; i < nf; i++) {
+      const b = c.blobs[(i * 2 + 1) % 9];
+      const fx = X + b.y * k * 0.28, fy = Y + k * 0.05 + b.x * k * 0.15;
+      ctx.strokeStyle = C.leaf; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(fx, fy - fr); ctx.lineTo(fx + fr * 0.4, fy - fr * 1.8); ctx.stroke();
+      ctx.fillStyle = C.fruit; ctx.beginPath(); ctx.arc(fx, fy, fr, 0, 7); ctx.fill();
+      ctx.fillStyle = rgba([255, 255, 255], 0.55); ctx.beginPath(); ctx.arc(fx - fr * 0.35, fy - fr * 0.35, fr * 0.3, 0, 7); ctx.fill();
+    }
+  }
+  if (c.pest > 0.02) {
+    ctx.fillStyle = C.refuse;
+    const n = 1 + Math.round(c.pest * 6);
+    for (let i = 0; i < n; i++) { const b = c.blobs[(i + 3) % 9]; ctx.beginPath(); ctx.arc(X + b.y * k * 0.3, Y + b.x * k * 0.2, Math.max(1.3, k * 0.04), 0, 7); ctx.fill(); }
+  }
+}
+
+function draw() {
+  const { w, h, cell: k } = geo;
+  const hr = S.t % 24, s = sun(hr);
+  ctx.fillStyle = C.ground; ctx.fillRect(0, 0, w, h);
+
+  // wall
+  ctx.fillStyle = C.sheet; ctx.fillRect(px(0), py(0), COLS * k, ROWS * k);
+  // modules
+  for (const c of S.cells) {
+    const X = px(c.c), Y = py(c.r), inset = k * 0.07;
+    ctx.fillStyle = C.tray; ctx.fillRect(X + inset, Y + k * 0.62, k - inset * 2, k * 0.26);
+    drawPlant(c, X + k / 2, Y + k * 0.42, k);
+    // moisture gauge
+    const gw = k - inset * 2;
+    ctx.fillStyle = rgba(C.flowRGB, 0.22); ctx.fillRect(X + inset, Y + k * 0.84, gw, k * 0.06);
+    ctx.fillStyle = c.m < SP[c.sp].wilt ? C.refuse : C.flow; ctx.fillRect(X + inset, Y + k * 0.84, gw * c.m, k * 0.06);
+    ctx.fillStyle = C.ink; ctx.fillRect(X + inset + gw * S.trigger, Y + k * 0.82, 1, k * 0.1);
+    // nutrient gauge
+    ctx.fillStyle = rgba(C.feedRGB, 0.22); ctx.fillRect(X + inset, Y + k * 0.765, gw, k * 0.05);
+    ctx.fillStyle = C.feed; ctx.fillRect(X + inset, Y + k * 0.765, gw * c.n, k * 0.05);
+    if (shaded(c.r, c.c, hr)) { ctx.fillStyle = rgba(C.nightRGB, 0.13); ctx.fillRect(X, Y, k, k); }
+    if (c.flag) { ctx.setLineDash([4, 3]); ctx.strokeStyle = C.focus; ctx.lineWidth = 1.5; ctx.strokeRect(X + 2, Y + 2, k - 4, k - 4); ctx.setLineDash([]); }
+    if (hover === c) { ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.strokeRect(X + 1, Y + 1, k - 2, k - 2); }
+  }
+  // slabs + labels
+  ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
+  ctx.font = `${Math.max(9, k * 0.3)}px ${getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace'}`;
+  ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let r = 0; r <= ROWS; r++) {
+    ctx.beginPath(); ctx.moveTo(px(0), py(r) + 0.5); ctx.lineTo(px(COLS), py(r) + 0.5); ctx.stroke();
+    if (r < ROWS && (ROWS - r) % 2 === 0) ctx.fillText(`+${(ROWS - r) * 3}`, px(0) - k * 0.15, py(r) + k * 0.5);
+  }
+  // bay lines: the vertical flight rails
+  for (let c = 0; c <= COLS; c++) {
+    ctx.beginPath(); ctx.moveTo(px(c) + 0.5, py(0)); ctx.lineTo(px(c) + 0.5, py(ROWS)); ctx.stroke();
+  }
+  // roof + dock
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(px(-0.1), py(0)); ctx.lineTo(px(COLS + 0.1), py(0)); ctx.stroke();
+  ctx.lineWidth = 1; ctx.strokeRect(px(COLS - 1.6), py(-0.9), k * 1.2, k * 0.9);
+  ctx.fillStyle = C.flow; ctx.fillRect(px(COLS - 1.6) + 2, py(-0.9) + k * 0.3, k * 1.2 - 4, k * 0.6 - 2);
+  ctx.textAlign = 'center'; ctx.fillStyle = C.muted; ctx.fillText('water', px(COLS - 1.0), py(-1.15));
+  // fertilizer hopper, mirrored at the other end of the roof
+  ctx.strokeStyle = C.ink; ctx.strokeRect(px(0.2), py(-0.9), k * 1.2, k * 0.9);
+  ctx.fillStyle = C.feed; ctx.fillRect(px(0.2) + 2, py(-0.9) + k * 0.3, k * 1.2 - 4, k * 0.6 - 2);
+  ctx.fillStyle = C.muted; ctx.fillText('fertilizer', px(0.8), py(-1.15));
+  for (const d of S.drones) { const p = dockPos(d.i); ctx.strokeStyle = C.muted; ctx.strokeRect(px(p.x) - k * 0.3, py(p.y) - k * 0.1, k * 0.6, k * 0.62); }
+  ctx.fillText('dock', px(COLS / 2), py(-1.15));
+  // street
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, py(ROWS) + 1); ctx.lineTo(w, py(ROWS) + 1); ctx.stroke();
+  ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.fillText('street ±0 m', px(0), py(ROWS) + k * 0.4);
+  ctx.textAlign = 'right'; ctx.fillText('S elevation', px(COLS), py(ROWS) + k * 0.4);
+
+  // sun marker
+  if (s > 0) {
+    const sx = px(((hr - 6) / 12) * COLS), sy = py(-1.1) - s * k * 0.15;
+    ctx.fillStyle = C.give; ctx.beginPath(); ctx.arc(sx, sy, k * 0.16, 0, 7); ctx.fill();
+  }
+
+  // night dim
+  const dark = 1 - Math.min(1, s * 3);
+  if (dark > 0) { ctx.fillStyle = rgba(C.nightRGB, 0.12 * dark); ctx.fillRect(px(0), py(0), COLS * k, ROWS * k); }
+
+  // drones, pass 1: routes under everything, plus the sensing ring of the drone nearest the pointer
+  let ringD = null;
+  if (hover) {
+    let bd = 1.5;
+    for (const d of S.drones) { const q = Math.hypot(d.x - hover.c - 0.5, d.y - hover.r - 0.5); if (q < bd) { bd = q; ringD = d; } }
+  }
+  for (const d of S.drones) {
+    if (d.path && (d.state === 'fly' || d.state === 'return' || d.state === 'scout')) {
+      // routes ordered by an accepted proposal are drawn in the focus colour
+      ctx.strokeStyle = d.prop ? C.focus : rgba(C.inkRGB, 0.45); ctx.lineWidth = d.prop ? 2.5 : 1.5;
+      ctx.beginPath(); ctx.moveTo(px(d.x), py(d.y));
+      for (const [wx, wy] of d.path) ctx.lineTo(px(wx), py(wy));
+      ctx.stroke();
+    }
+    if (d.prop && d.target) {
+      ctx.strokeStyle = C.focus; ctx.lineWidth = 2;
+      ctx.strokeRect(px(d.target.c) + 3, py(d.target.r) + 3, k - 6, k - 6);
+    }
+  }
+  if (ringD) {
+    ctx.strokeStyle = rgba(C.focusRGB, 0.5); ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(px(ringD.x), py(ringD.y), S.reach * k, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  }
+  // pass 2: drone bodies, each fits inside a circle about 0.45 modules wide (see SEP_FLY / SEP_WORK)
+  for (const d of S.drones) {
+    const X = px(d.x), Y = py(d.y);
+    const r = k * 0.09, arm = k * 0.155;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.6;
+    for (const [ax, ay] of [[-1,-1],[1,-1],[-1,1],[1,1]]) {
+      ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + ax * arm, Y + ay * arm * 0.6); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(X + ax * arm, Y + ay * arm * 0.6, k * 0.07, k * 0.03, 0, 0, 7); ctx.stroke();
+    }
+    const tcol = d.task ? ({ water: C.flow, treat: C.refuse, feed: C.feed }[d.task.type] || C.ok) : C.ground;
+    ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(X, Y, r, 0, 7); ctx.fill();
+    ctx.fillStyle = tcol; ctx.beginPath(); ctx.arc(X, Y, r * 0.5, 0, 7); ctx.fill();
+    // battery tick
+    ctx.fillStyle = rgba(C.inkRGB, 0.2); ctx.fillRect(X - k * 0.15, Y + k * 0.15, k * 0.3, 3);
+    ctx.fillStyle = d.battery < 0.3 ? C.give : C.ink; ctx.fillRect(X - k * 0.15, Y + k * 0.15, k * 0.3 * d.battery, 3);
+  }
+  for (const p of S.sprays) { ctx.fillStyle = p.feed ? C.feed : C.flow; ctx.beginPath(); ctx.arc(px(p.x), py(p.y), 1.6, 0, 7); ctx.fill(); }
+  // proposal number tags beside drones carrying out an accepted proposal
+  ctx.font = `500 ${Math.max(10, k * 0.3)}px ${getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace'}`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  for (const d of S.drones) if (d.prop) tag(`#${d.prop}`, px(d.x) + k * 0.28, py(d.y) - k * 0.3, C.focus);
+  drawMarks();
+}
+
+function tag(text, x, y, bg) {
+  const w = ctx.measureText(text).width + 8, h = Math.max(14, geo.cell * 0.42);
+  x = clamp(x, 2, geo.w - w - 2); y = clamp(y, h / 2 + 2, geo.h - h / 2 - 2);
+  ctx.fillStyle = bg; ctx.fillRect(x, y - h / 2, w, h);
+  ctx.fillStyle = C.ground; ctx.fillText(text, x + 4, y + 0.5);
+}
+
+// Refusals stay on the wall for a few seconds: the failing route, an X where it fails,
+// the modules, drones or pads involved, and a label naming the reason.
+const MARK_MS = 7000;
+function drawMarks() {
+  const now = performance.now(), k = geo.cell;
+  S.marks = S.marks.filter(m => now - m.born < MARK_MS);
+  for (const m of S.marks) {
+    const age = (now - m.born) / MARK_MS, a = age < 0.7 ? 1 : 1 - (age - 0.7) / 0.3;
+    const pulse = 0.5 + 0.5 * Math.sin(now / 160);
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = C.refuse; ctx.lineWidth = 2.5;
+    if (m.path && m.path.length > 1) {
+      ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.moveTo(px(m.path[0][0]), py(m.path[0][1]));
+      for (const [x, y] of m.path.slice(1)) ctx.lineTo(px(x), py(y));
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+    for (const c of m.cells || []) { ctx.lineWidth = 2 + pulse * 1.5; ctx.strokeRect(px(c.c) + 2, py(c.r) + 2, k - 4, k - 4); }
+    for (const d of m.drones || []) { ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px(d.x), py(d.y), k * (0.38 + 0.06 * pulse), 0, 7); ctx.stroke(); }
+    if (m.drones && m.drones.length === 2) {
+      ctx.setLineDash([2, 3]); ctx.lineWidth = 1.5; ctx.beginPath();
+      ctx.moveTo(px(m.drones[0].x), py(m.drones[0].y)); ctx.lineTo(px(m.drones[1].x), py(m.drones[1].y)); ctx.stroke(); ctx.setLineDash([]);
+    }
+    if (m.pads) {
+      for (let i = 0; i < m.pads; i++) {
+        const x = COLS / 2 + (i - (m.pads - 1) / 2) * 1.05;
+        const over = i >= 10;
+        ctx.lineWidth = over ? 2.5 : 1.5; ctx.setLineDash(over ? [3, 3] : []);
+        ctx.strokeRect(px(x) - k * 0.3, py(-0.72) - k * 0.1, k * 0.6, k * 0.62);
+      }
+      ctx.setLineDash([]);
+    }
+    if (m.x) {
+      const X = px(m.x[0]), Y = py(m.x[1]), s = k * 0.25;
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X - s, Y - s); ctx.lineTo(X + s, Y + s); ctx.moveTo(X + s, Y - s); ctx.lineTo(X - s, Y + s); ctx.stroke();
+    }
+    if (m.at) tag(`#${m.id} ${m.code}`, px(m.at[0]) + k * 0.3, py(m.at[1]) - k * 0.45, C.refuse);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawSpark() {
+  const w = spark.clientWidth, h = 56;
+  sctx.clearRect(0, 0, w, h);
+  const xs = t => (t - START_H) / (END_H - START_H) * w, ys = v => h - 4 - v * (h - 8);
+  sctx.strokeStyle = C.rule; sctx.lineWidth = 1;
+  for (let d = 1; d < DAYS; d++) { const x = Math.round(xs(START_H + d * 24)) + 0.5; sctx.beginPath(); sctx.moveTo(x, 4); sctx.lineTo(x, h - 4); sctx.stroke(); }
+  sctx.setLineDash([3, 3]); sctx.strokeStyle = C.muted;
+  sctx.beginPath(); sctx.moveTo(0, ys(0.75)); sctx.lineTo(w, ys(0.75)); sctx.stroke(); sctx.setLineDash([]);
+  const H = S.history; if (H.length < 2) return;
+  sctx.beginPath(); sctx.moveTo(xs(H[0].t), h - 4);
+  for (const p of H) sctx.lineTo(xs(p.t), ys(p.v));
+  sctx.lineTo(xs(H[H.length - 1].t), h - 4); sctx.closePath();
+  sctx.fillStyle = rgba(C.leafRGB, 0.18); sctx.fill();
+  sctx.beginPath(); H.forEach((p, i) => i ? sctx.lineTo(xs(p.t), ys(p.v)) : sctx.moveTo(xs(p.t), ys(p.v)));
+  sctx.strokeStyle = C.leaf; sctx.lineWidth = 1.5; sctx.stroke();
+  const e = H[H.length - 1]; sctx.fillStyle = C.leaf; sctx.beginPath(); sctx.arc(xs(e.t), ys(e.v), 3, 0, 7); sctx.fill();
+}
+
+const fmtClock = t => { const day = Math.floor((t) / 24) + 1, hr = t % 24; const hh = Math.floor(hr), mm = Math.floor((hr - hh) * 6) * 10; return `Day ${Math.min(day, DAYS)} · ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`; };
+function updatePanel() {
+  const cells = S.cells, n = cells.length;
+  const healthy = cells.filter(c => !c.dead && c.health > 0.5).length;
+  const dry = cells.filter(c => !c.dead && c.m < SP[c.sp].wilt).length;
+  const pests = cells.filter(c => c.pest > 0.1).length;
+  const dead = cells.filter(c => c.dead).length;
+  const hf = healthy / n, avg = S.scoreT ? S.scoreSum / S.scoreT : hf;
+  const cls = v => v >= 0.75 ? 'good' : v >= 0.55 ? 'warn' : 'bad';
+  const rows = [
+    ['Clock', fmtClock(S.t - START_H + START_H), ''],
+    ['Healthy modules', `${healthy}/${n} · ${(hf * 100).toFixed(0)}%`, cls(hf)],
+    ['Season score', `${(avg * 100).toFixed(0)}%`, cls(avg)],
+    ['Wilting', dry, dry ? 'warn' : ''],
+    ['With pests', pests, pests ? 'bad' : ''],
+    ['Decaying', cells.filter(c => c.decay).length, cells.some(c => c.decay) ? 'warn' : ''],
+    ['Dead', dead, dead ? 'bad' : ''],
+    ['Revived so far', S.revived, S.revived ? 'good' : ''],
+    ['Berries on wall', cells.reduce((a, c) => a + Math.floor(c.fruit), 0), ''],
+    ['Hungry soil', cells.filter(c => !c.dead && c.n < FEED_TRIGGER).length, ''],
+    ['Water used', `${Math.round(S.water)} L`, ''],
+    ['Fertilizer used', `${S.fert.toFixed(1)} kg`, ''],
+    ['Energy used', `${S.energy.toFixed(1)} kWh`, ''],
+    ['Wind at parapet', `${(4 + S.wind * 10).toFixed(1)} m/s`, ''],
+  ];
+  $('readout').innerHTML = rows.map(([a, b, c]) => `<dt>${a}</dt><dd class="${c}">${b}</dd>`).join('');
+  const stateText = d => {
+    if (d.state === 'fly' || d.state === 'work') return `${d.state === 'fly' ? '→ ' : ''}${TASK_NAME[d.task.type]} ${cellName(d.target)}`;
+    return { standby: 'On dock', charge: 'Charging', return: 'Returning', scout: 'Scouting', idle: 'Scanning' }[d.state];
+  };
+  $('fleetList').innerHTML = `<div class="d head"><span>#</span><span>Battery</span><span>Water</span><span>Feed</span><span>Doing</span></div>` +
+    S.drones.map(d => `<div class="d"><span>D${d.i + 1}</span><span class="bar"><i style="width:${(d.battery * 100).toFixed(0)}%"></i></span><span class="bar tank"><i style="width:${(d.tank * 100).toFixed(0)}%"></i></span><span class="bar feed"><i style="width:${(d.fert * 100).toFixed(0)}%"></i></span><span class="st">${stateText(d)}</span></div>`).join('');
+  const b = $('banner');
+  if (S.heat > 0) { b.hidden = false; b.textContent = `Heatwave · evaporation ×1.9 · ${Math.ceil(S.heat)} h left`; } else b.hidden = true;
+}
+
+// ---------- interaction ----------
+let hover = null;
+function cellAt(e) {
+  const rect = wall.getBoundingClientRect();
+  const x = (e.clientX - rect.left - geo.x0) / geo.cell, y = (e.clientY - rect.top - geo.y0) / geo.cell;
+  return at(Math.floor(y), Math.floor(x));
+}
+function probeText(c) {
+  if (!c) return 'Hover a module to read it, or near a drone to see its sensing reach. Click to flag a module: flagged modules are visible to every drone.';
+  const sp = SP[c.sp];
+  if (c.dead) return `${cellName(c)} · ${sp.name} · dead, waiting to be revived${c.flag ? ' · flagged' : ''}`;
+  if (c.decay) return `${cellName(c)} · ${sp.name} · decaying, health ${(c.health * 100).toFixed(0)}% · needs a drone to revive it${c.flag ? ' · flagged' : ''}`;
+  return `${cellName(c)} · ${sp.name} · soil ${(c.m * 100).toFixed(0)}% (wilts <${(sp.wilt * 100).toFixed(0)}%) · nutrients ${(c.n * 100).toFixed(0)}% · health ${(c.health * 100).toFixed(0)}%${c.pest > 0.02 ? ` · pests ${(c.pest * 100).toFixed(0)}%` : ''}${c.fruiting ? ` · fruiting, ${Math.floor(c.fruit)} berries` : ''}${c.flag ? ' · flagged' : ''}`;
+}
+wall.addEventListener('pointermove', e => { hover = cellAt(e); $('probe').textContent = probeText(hover); });
+wall.addEventListener('pointerleave', () => { hover = null; $('probe').textContent = probeText(null); });
+wall.addEventListener('click', e => { const c = cellAt(e); if (!c) return; c.flag = !c.flag; hover = c; $('probe').textContent = probeText(c); });
+
+$('run').addEventListener('click', () => {
+  if (S.over) { newState(); $('endcard').hidden = true; }
+  S.running = !S.running; S.started = true;
+  $('run').textContent = S.running ? 'Pause' : 'Resume';
+});
+$('reset').addEventListener('click', () => { newState(); $('endcard').hidden = true; $('run').textContent = 'Start season'; updatePanel(); });
+$('again').addEventListener('click', () => { newState(); $('endcard').hidden = true; S.running = true; $('run').textContent = 'Pause'; });
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  S.speed = +b.dataset.speed;
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+}));
+$('fleet').addEventListener('input', e => { const n = +e.target.value; $('fleetOut').textContent = `${n} drone${n > 1 ? 's' : ''}`; setFleet(n); updatePanel(); });
+$('trigger').addEventListener('input', e => { S.trigger = +e.target.value / 100; $('triggerOut').textContent = e.target.value + '%'; });
+$('reach').addEventListener('input', e => { S.reach = +e.target.value; $('reachOut').textContent = `${e.target.value} modules`; });
+$('heat').addEventListener('click', () => { S.heat = 36; updatePanel(); });
+$('pests').addEventListener('click', () => {
+  for (let i = 0; i < 5; i++) { const c = seedPest(0.3); if (c) for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1]]) { const nb = at(c.r + dr, c.c + dc); if (nb && !nb.dead) nb.pest = Math.max(nb.pest, 0.12); } }
+});
+
+// ---------- proposals ----------
+// A language model (or anyone) proposes moves as JSON. Every move is checked against the
+// simulation before it runs; a move that cannot work is refused and the failure is drawn on the wall.
+let nextPid = 1;
+const pct = v => `${Math.round(v * 100)}%`;
+const clock = () => fmtClock(S.t);
+const TASK_DUR = { water: 0.25, feed: 0.3, treat: 0.5 };
+
+function moduleFrom(s) {
+  const m = /L\s*(\d+)\s*[^\dA-Za-z]*\s*B\s*(\d+)/i.exec(String(s || ''));
+  if (!m) return null;
+  return at(ROWS - +m[1], +m[2] - 1);
+}
+function droneFrom(s) {
+  const m = /(\d+)/.exec(String(s ?? ''));
+  return m ? S.drones[+m[1] - 1] || null : null;
+}
+function cellOfPoint(x, y) {
+  if (y < 0) return 'roof dock';
+  return cellName(at(clamp(Math.floor(y), 0, ROWS - 1), clamp(Math.floor(x), 0, COLS - 1)));
+}
+function parseProposal(text) {
+  let t = String(text || '').replace(/```(?:json)?/gi, '');
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  const a2 = t.indexOf('['), b2 = t.lastIndexOf(']');
+  let obj = null;
+  try {
+    if (a2 >= 0 && (a < 0 || a2 < a)) obj = JSON.parse(t.slice(a2, b2 + 1));
+    else if (a >= 0) obj = JSON.parse(t.slice(a, b + 1));
+  } catch (e) { return null; }
+  if (!obj) return null;
+  const moves = Array.isArray(obj) ? obj : Array.isArray(obj.moves) ? obj.moves : obj.type ? [obj] : null;
+  return moves && moves.length ? moves.slice(0, 3) : null;
+}
+
+// Walk a drone along a planned rail route and report where its battery would run out.
+function batteryWalk(d, outPts, workH, backPts) {
+  let x = d.x, y = d.y, left = d.battery, used = 0;
+  const walk = pts => {
+    for (const [wx, wy] of pts) {
+      const L = Math.hypot(wx - x, wy - y), rate = drainPerCell(y), cost = L * rate;
+      if (cost > left) { const f = left / cost; return [x + (wx - x) * f, y + (wy - y) * f]; }
+      left -= cost; used += cost; x = wx; y = wy;
+    }
+    return null;
+  };
+  let fail = walk(outPts);
+  if (fail) return { fail, leg: 'out', used };
+  const w = workH * 0.03;
+  if (w > left) return { fail: [x, y], leg: 'work', used };
+  left -= w; used += w;
+  fail = walk(backPts);
+  return fail ? { fail, leg: 'back', used } : { fail: null, used };
+}
+
+function refuse(id, code, text, mark) {
+  S.marks.push({ id, code, born: performance.now(), ...mark });
+  const el = $('refusal'); el.hidden = false; el.textContent = `Refused #${id} · ${code} · ${text}`;
+  clearTimeout(refuse.timer); refuse.timer = setTimeout(() => { el.hidden = true; }, MARK_MS);
+  return { ok: false, code, text };
+}
+
+function checkMove(mv, id) {
+  const type = String(mv.type || mv.move || '').toLowerCase();
+  if (type === 'wait') return { ok: true, text: 'Fleet keeps following its own rules.' };
+  if (type === 'flag') {
+    const c = moduleFrom(mv.module);
+    if (!c) return refuse(id, 'UNREADABLE', `No module called "${mv.module}".`, {});
+    if (!c.flag && S.cells.filter(x => x.flag).length >= 8) return refuse(id, 'OUT OF RANGE', 'Already 8 flags on the wall; clear one first.', { cells: [c], at: [c.c + 0.5, c.r + 0.5] });
+    c.flag = true;
+    return { ok: true, text: `${cellName(c)} flagged: every drone can now see it.` };
+  }
+  if (type === 'set') {
+    const p = String(mv.param || '').toLowerCase();
+    let v = Number(mv.value);
+    if (!Number.isFinite(v)) return refuse(id, 'UNREADABLE', `"${mv.value}" is not a number.`, {});
+    if (p.includes('fleet') || p.includes('drone')) {
+      v = Math.round(v);
+      if (v > 10) return refuse(id, 'DOCK FULL', `The roof has 10 pads; ${v} drones would have nowhere to land.`, { pads: v, at: [COLS / 2, -0.9] });
+      if (v < 1) return refuse(id, 'OUT OF RANGE', 'The fleet needs at least one drone.', {});
+      $('fleet').value = v; $('fleet').dispatchEvent(new Event('input'));
+      return { ok: true, text: `Fleet set to ${v}.` };
+    }
+    if (p.includes('trigger') || p.includes('water')) {
+      if (v <= 1) v *= 100;
+      v = Math.round(v / 5) * 5;
+      if (v < 20 || v > 70) return refuse(id, 'OUT OF RANGE', `Water trigger must be 20–70%, not ${v}%.`, {});
+      $('trigger').value = v; $('trigger').dispatchEvent(new Event('input'));
+      return { ok: true, text: `Water trigger set to ${v}%.` };
+    }
+    if (p.includes('reach') || p.includes('sens')) {
+      v = Math.round(v);
+      if (v < 2 || v > 15) return refuse(id, 'OUT OF RANGE', `Sensing reach must be 2–15 modules, not ${v}.`, {});
+      $('reach').value = v; $('reach').dispatchEvent(new Event('input'));
+      return { ok: true, text: `Sensing reach set to ${v} modules.` };
+    }
+    return refuse(id, 'UNREADABLE', `No setting called "${mv.param}".`, {});
+  }
+  if (type !== 'dispatch') return refuse(id, 'UNREADABLE', `Unknown move type "${mv.type}".`, {});
+
+  const d = droneFrom(mv.drone), c = moduleFrom(mv.module), task = String(mv.task || '').toLowerCase();
+  if (!d) return refuse(id, 'UNREADABLE', `No drone called "${mv.drone}" (fleet is D1–D${S.drones.length}).`, {});
+  if (!c) return refuse(id, 'UNREADABLE', `No module called "${mv.module}".`, { drones: [d], at: [d.x, d.y] });
+  if (!['water', 'feed', 'treat', 'revive'].includes(task)) return refuse(id, 'UNREADABLE', `Unknown task "${mv.task}".`, { cells: [c], at: [c.c + 0.5, c.r + 0.5] });
+  const here = [c.c + 0.5, c.r + 0.5], name = cellName(c), dn = `D${d.i + 1}`;
+  if (d.state === 'work') return refuse(id, 'BUSY', `${dn} is mid-job at ${cellName(d.target)}.`, { drones: [d], cells: [d.target], at: [d.x, d.y] });
+  if (c.claimed >= 0 && c.claimed !== d.i) {
+    const o = S.drones[c.claimed];
+    return refuse(id, 'JAM', `${name} is already claimed by D${o.i + 1}.`, { drones: [d, o], cells: [c], at: here });
+  }
+  if (c.dead && task !== 'revive') return refuse(id, 'DEAD', `${name} is dead; only revive works on it.`, { cells: [c], at: here });
+  if (task === 'water' && c.m > 0.9) return refuse(id, 'OVERWATER', `${name} soil is at ${pct(c.m)}; more water would rot the roots.`, { cells: [c], at: here });
+  if (task === 'feed' && c.n > 0.8) return refuse(id, 'OVERFEED', `${name} nutrients are at ${pct(c.n)}; more would burn the plant.`, { cells: [c], at: here });
+  if (task === 'treat' && c.pest < 0.02) return refuse(id, 'NOTHING TO DO', `${name} has no pests to treat.`, { cells: [c], at: here });
+  if (task === 'revive' && !c.dead && !c.decay) return refuse(id, 'NOTHING TO DO', `${name} is not decaying (health ${pct(c.health)}).`, { cells: [c], at: here });
+  if (task === 'water' && d.tank < TANK_DOSE - 1e-6) return refuse(id, 'EMPTY', `${dn}'s water tank is at ${pct(d.tank)}.`, { drones: [d], at: [d.x, d.y] });
+  if (task === 'feed' && d.fert < FEED_DOSE - 1e-6) return refuse(id, 'EMPTY', `${dn}'s fertilizer hopper is at ${pct(d.fert)}.`, { drones: [d], at: [d.x, d.y] });
+
+  const dur = task === 'revive' ? (c.dead ? 2.0 : 1.0) : TASK_DUR[task];
+  const out = { x: d.x, y: d.y }; route(out, here[0], here[1]);
+  const home = dockPos(d.i), back = { x: here[0], y: here[1] }; route(back, home.x, home.y);
+  const walk = batteryWalk(d, out.path, dur, back.path);
+  if (walk.fail) {
+    const where = walk.leg === 'out' ? `before reaching ${name}` : walk.leg === 'work' ? `while working at ${name}` : `on the way home from ${name}`;
+    return refuse(id, 'UNREACHABLE', `${dn} has ${pct(d.battery)} battery and would run flat ${where}.`,
+      { path: [[d.x, d.y], ...out.path, ...back.path], x: walk.fail, drones: [d], cells: [c], at: walk.fail });
+  }
+
+  // Accepted: the drone drops its current job and takes this one.
+  release(d);
+  c.claimed = d.i; d.target = c; d.prop = id;
+  d.task = { type: task, need: 1, dur };
+  d.state = 'fly'; route(d, here[0], here[1]);
+  return { ok: true, text: `${dn} → ${name}, ${TASK_NAME[task].toLowerCase()}. Round trip uses about ${pct(walk.used)} battery.` };
+}
+
+function describeMove(mv) {
+  const type = String(mv.type || mv.move || '?').toLowerCase();
+  if (type === 'dispatch') return `dispatch ${mv.drone} → ${mv.module} · ${mv.task}`;
+  if (type === 'set') return `set ${mv.param} = ${mv.value}`;
+  if (type === 'flag') return `flag ${mv.module}`;
+  return type;
+}
+
+function runProposal(text, source) {
+  const moves = parseProposal(text);
+  if (!moves) {
+    const id = nextPid++;
+    const r = refuse(id, 'UNREADABLE', 'Could not find a JSON proposal with moves in that text.', {});
+    S.proposals.unshift({ id, at: clock(), source, what: 'unreadable reply', ...r, why: '' });
+    renderLog(); return;
+  }
+  for (const mv of moves) {
+    const id = nextPid++;
+    const r = checkMove(mv, id);
+    S.proposals.unshift({ id, at: clock(), source, what: describeMove(mv), why: mv.why || '', ...r });
+  }
+  renderLog(); updatePanel();
+}
+
+function renderLog() {
+  const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  $('plog').innerHTML = S.proposals.length ? S.proposals.slice(0, 40).map(p =>
+    `<li class="${p.ok ? 'ok' : 'no'}"><span class="pill">${p.ok ? 'Accepted' : esc(p.code)}</span>` +
+    `<span class="what">#${p.id} · ${esc(p.at)} · ${esc(p.source)} · ${esc(p.what)}</span>` +
+    `<span class="why">${esc(p.text)}${p.why ? ` <br>Reason given: ${esc(p.why)}` : ''}</span></li>`).join('')
+    : '<li class="empty">No proposals yet. Press Suggest next move, or Try an impossible move to see a refusal.</li>';
+}
+
+// ---------- the prompt ----------
+function urgentModules() {
+  const rows = [];
+  for (const c of S.cells) {
+    const n = needOf(c);
+    const low = !c.dead && (c.m < S.trigger + 0.1 || c.n < FEED_TRIGGER + 0.1 || c.pest > 0.02 || c.decay);
+    if (!n && !low) continue;
+    rows.push({ c, score: n ? n.need : 0.1 });
+  }
+  return rows.sort((a, b) => b.score - a.score).slice(0, 24).map(({ c }) => {
+    const bits = [`${cellName(c)} ${SP[c.sp].name}`];
+    if (c.dead) bits.push('DEAD');
+    else bits.push(`soil ${pct(c.m)}`, `nutrients ${pct(c.n)}`, `health ${pct(c.health)}`);
+    if (c.pest > 0.02) bits.push(`pests ${pct(c.pest)}`);
+    if (c.decay) bits.push('decaying');
+    if (c.claimed >= 0) bits.push(`claimed by D${c.claimed + 1}`);
+    return '- ' + bits.join(', ');
+  }).join('\n');
+}
+function buildPrompt() {
+  const drones = S.drones.map(d => {
+    const doing = d.task ? `${TASK_NAME[d.task.type].toLowerCase()} ${cellName(d.target)}${d.state === 'work' ? ' (mid-job)' : ' (flying there)'}`
+      : { standby: 'parked on dock', charge: 'charging on dock', return: 'returning to dock', scout: 'scouting', idle: 'choosing a job' }[d.state];
+    return `- D${d.i + 1} at ${cellOfPoint(d.x, d.y)}: ${doing}; battery ${pct(d.battery)}, water ${pct(d.tank)}, fertilizer ${pct(d.fert)}`;
+  }).join('\n');
+  const healthy = S.cells.filter(c => !c.dead && c.health > 0.5).length;
+  return `You are advising a fleet of maintenance drones that keep a living green-wall facade alive. Propose the most useful next moves.
+
+THE WALL
+- 140 planted modules in a grid: levels L1 (street) to L10 (top), bays B1 (left) to B14 (right). Modules are named like L7·B4.
+- Soil dries in sun and wind (faster on upper levels and in heatwaves). Ferns wilt below 34% soil, grasses 24%, ivy 22%, sedum 14%.
+- Nutrients run down as plants grow. Pests spread to neighbours. Modules can start decaying on their own and die if nobody revives them.
+
+THE DRONES
+- Drones fly along the joints of the grid from a dock on the roof (above L10). Flying uses about 1.1% battery per module width, more near the top in wind; a job uses about 3% per game hour.
+- A drone must keep enough battery for the trip, the job and the flight home.
+- Jobs: water (uses 1/6 of the water tank), feed (1/8 of the fertilizer hopper), treat (removes pests), revive (decaying or dead modules; 1 h, or 2 h if dead).
+- Without your moves, each drone follows local rules: it only sees modules within its sensing reach and takes the most urgent unclaimed one.
+
+THE SIMULATION WILL REFUSE A MOVE THAT
+- sends a drone that is mid-job (BUSY), or to a module another drone has claimed (JAM)
+- waters soil above 90% (OVERWATER), feeds nutrients above 80% (OVERFEED), treats a module without pests or revives a healthy one (NOTHING TO DO), or does anything but revive on a dead module (DEAD)
+- needs more water or fertilizer than the drone carries (EMPTY), or more battery than the round trip allows (UNREACHABLE)
+- sets the fleet above 10 (DOCK FULL: the roof has 10 pads), the water trigger outside 20–70%, or the reach outside 2–15 modules (OUT OF RANGE)
+
+CURRENT STATE · ${clock()}${S.heat > 0 ? ` · HEATWAVE, ${Math.ceil(S.heat)} h left` : ''} · wind at parapet ${(4 + S.wind * 10).toFixed(1)} m/s
+Healthy modules: ${healthy}/140. Settings: fleet ${S.drones.length}, water trigger ${Math.round(S.trigger * 100)}%, sensing reach ${S.reach} modules.
+
+Drones:
+${drones}
+
+Modules needing attention (most urgent first):
+${urgentModules() || '- none right now'}
+
+REPLY with JSON only, no other text, in exactly this shape, with 1 to 3 moves:
+{"moves":[
+  {"type":"dispatch","drone":"D3","module":"L7·B4","task":"water","why":"short reason"},
+  {"type":"set","param":"fleet|trigger|reach","value":8,"why":"short reason"},
+  {"type":"flag","module":"L2·B11","why":"short reason"},
+  {"type":"wait","why":"short reason"}
+]}`;
+}
+
+// ---------- asking Claude ----------
+// The page calls the Claude API straight from the browser with the viewer's own key.
+// The key lives only in this tab's memory (the input field) and goes only to the Claude API.
+const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.131.0/+esm';
+let sdk = null;
+async function askClaude(prompt, apiKey) {
+  if (!sdk) sdk = await import(SDK_URL);
+  const Anthropic = sdk.default;
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  const res = await client.beta.messages.create({
+    model: 'claude-opus-5-5',
+    max_tokens: 16000,
+    output_config: { effort: 'low' },
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    messages: [{ role: 'user', content: prompt }],
+  });
+  if (res.stop_reason === 'refusal') {
+    throw new Error(`Claude declined to answer${res.stop_details && res.stop_details.explanation ? `: ${res.stop_details.explanation}` : '.'}`);
+  }
+  return { text: res.content.filter(b => b.type === 'text').map(b => b.text).join('\n'), model: res.model };
+}
+function apiErrorText(err) {
+  const s = err && err.status;
+  if (s === 401) return 'The API key was rejected. Check it and try again.';
+  if (s === 403) return 'This API key is not allowed to use that model.';
+  if (s === 429) return 'Rate limited by the Claude API. Wait a moment and try again.';
+  if (s >= 500) return 'The Claude API had a server error. Try again in a moment.';
+  if (!s) return 'Could not reach the Claude API from this page. Some hosts block outside requests (the claude.ai preview does); use Copy prompt instead.';
+  return `Claude API error: ${err.message}`;
+}
+function setStatus(text, isErr) { const el = $('suggestStatus'); el.textContent = text; el.classList.toggle('err', !!isErr); }
+async function copyText(text, fallbackEl) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch (e) { if (fallbackEl) { fallbackEl.closest('details') && (fallbackEl.closest('details').open = true); fallbackEl.focus(); fallbackEl.select(); } return false; }
+}
+
+$('copyPrompt').addEventListener('click', async () => {
+  const p = buildPrompt(); $('promptOut').value = p;
+  const ok = await copyText(p, $('promptOut'));
+  setStatus(ok ? 'Prompt copied. Paste it into any chatbot, paste the reply into Proposal, then press Apply.'
+               : 'Copy was blocked here, so the prompt is selected below. Copy it with Ctrl+C or ⌘C.');
+});
+$('suggest').addEventListener('click', async () => {
+  const p = buildPrompt(); $('promptOut').value = p;
+  const key = $('apiKey').value.trim();
+  if (!key) {
+    const ok = await copyText(p, $('promptOut'));
+    setStatus(ok ? 'No API key, so the prompt was copied instead. Paste it into any chatbot, paste the reply into Proposal, then press Apply.'
+                 : 'No API key, and copy was blocked here, so the prompt is selected below. Copy it, paste it into any chatbot, then paste the reply into Proposal.');
+    return;
+  }
+  const wasRunning = S.running;
+  S.running = false; $('run').textContent = 'Resume';
+  $('suggest').disabled = true; setStatus('Paused while Claude reads the wall…');
+  try {
+    const { text, model } = await askClaude(p, key);
+    $('proposal').value = text;
+    runProposal(text, model.includes('opus') ? 'Claude' : `Claude (${model})`);
+    setStatus(`Claude's reply is in the Proposal box and has been applied. See the log for what was accepted or refused.`);
+  } catch (err) {
+    setStatus(err && String(err.message).startsWith('Claude declined') ? err.message : apiErrorText(err), true);
+  } finally {
+    $('suggest').disabled = false;
+    if (wasRunning && !S.over) { S.running = true; $('run').textContent = 'Pause'; }
+  }
+});
+$('applyProposal').addEventListener('click', () => {
+  const text = $('proposal').value.trim();
+  if (!text) { setStatus('Paste a proposal first.', true); return; }
+  runProposal(text, 'pasted');
+  setStatus('Applied. See the log for what was accepted or refused.');
+});
+
+// A deliberately bad proposal, picked from what is actually impossible right now.
+$('tryBad').addEventListener('click', () => {
+  const opts = [];
+  const wet = S.cells.filter(c => !c.dead && c.m > 0.9 && c.claimed < 0);
+  const free = S.drones.filter(d => d.state !== 'work');
+  if (wet.length && free.length) { const c = wet[(rand() * wet.length) | 0]; opts.push({ type: 'dispatch', drone: `D${free[0].i + 1}`, module: cellName(c), task: 'water', why: 'test: water an already soaked module' }); }
+  const claimed = S.cells.filter(c => c.claimed >= 0);
+  if (claimed.length) {
+    const c = claimed[(rand() * claimed.length) | 0], o = S.drones.find(d => d.i !== c.claimed && d.state !== 'work');
+    if (o) opts.push({ type: 'dispatch', drone: `D${o.i + 1}`, module: cellName(c), task: 'water', why: 'test: send a second drone to a claimed module' });
+  }
+  const weak = free.filter(d => d.battery < 0.5).sort((a, b) => a.battery - b.battery)[0];
+  if (weak) {
+    const far = S.cells.filter(c => !c.dead && c.claimed < 0).sort((a, b) => (b.r + Math.abs(b.c - weak.x)) - (a.r + Math.abs(a.c - weak.x)))[0];
+    if (far) opts.push({ type: 'dispatch', drone: `D${weak.i + 1}`, module: cellName(far), task: 'revive', why: 'test: long trip on a low battery' });
+  }
+  opts.push({ type: 'set', param: 'fleet', value: 14, why: 'test: more drones than pads' });
+  const mv = opts[(rand() * opts.length) | 0];
+  $('proposal').value = JSON.stringify({ moves: [mv] }, null, 2);
+  runProposal($('proposal').value, 'test');
+});
+
+// ---------- trace ----------
+function traceData() {
+  const cells = S.cells, days = Math.max((S.t - START_H) / 24, 1 / 24);
+  const jobs = Object.values(S.done).reduce((a, b) => a + b, 0);
+  const visited = cells.filter(c => c.visited != null && S.t - c.visited <= 24).length;
+  const refused = S.proposals.filter(p => !p.ok), byCode = {};
+  for (const p of refused) byCode[p.code] = (byCode[p.code] || 0) + 1;
+  return {
+    clock: clock(), seasonScore: S.scoreT ? +(S.scoreSum / S.scoreT).toFixed(3) : null,
+    healthy: cells.filter(c => !c.dead && c.health > 0.5).length, dead: cells.filter(c => c.dead).length, revived: S.revived,
+    jobs: { ...S.done, total: jobs }, jobsPerDay: +(jobs / days).toFixed(1),
+    coverage24h: +(visited / cells.length).toFixed(3),
+    waterL: Math.round(S.water), fertilizerKg: +S.fert.toFixed(1), energyKWh: +S.energy.toFixed(1),
+    proposals: { accepted: S.proposals.length - refused.length, refused: refused.length, refusedBy: byCode },
+  };
+}
+function updateTrace() {
+  const t = traceData();
+  const codes = Object.entries(t.proposals.refusedBy).map(([k, v]) => `${k} ${v}`).join(', ') || 'none';
+  const rows = [
+    ['Survived', `${t.healthy}/140 healthy · ${t.dead} dead · ${t.revived} revived`],
+    ['Jobs done', `${t.jobs.water} water · ${t.jobs.feed} feed · ${t.jobs.treat} treat · ${t.jobs.revive} revive`],
+    ['Throughput', `${t.jobsPerDay} jobs per game day`],
+    ['Coverage', `${pct(t.coverage24h)} of modules tended in the last 24 h`],
+    ['Proposals', `${t.proposals.accepted} accepted · ${t.proposals.refused} refused`],
+    ['Refusals by reason', codes],
+  ];
+  $('trace').innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
+}
+$('copyTrace').addEventListener('click', async () => {
+  const data = { ...traceData(), healthyOverTime: S.history.map(h => ({ hour: +h.t.toFixed(1), healthy: +h.v.toFixed(3) })), log: S.proposals };
+  const ok = await copyText(JSON.stringify(data, null, 2), null);
+  $('traceStatus').textContent = ok ? 'Trace copied to the clipboard as JSON.' : 'Copy was blocked on this page.';
+});
+
+// ---------- loop ----------
+newState();
+$('fleetOut').textContent = `${$('fleet').value} drones`;
+$('triggerOut').textContent = $('trigger').value + '%';
+$('reachOut').textContent = `${$('reach').value} modules`;
+resize();
+window.addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe(wall.parentElement);
+let last = performance.now(), panelT = 0;
+function frame(now) {
+  const real = Math.min(0.05, (now - last) / 1000); last = now;
+  if (S.running && !S.over) {
+    let simDt = real * S.speed * HOURS_PER_SECOND;
+    while (simDt > 0) { const d = Math.min(0.05, simDt); step(d); simDt -= d; if (S.over) break; }
+  }
+  draw();
+  panelT -= real;
+  if (panelT <= 0) { updatePanel(); updateTrace(); drawSpark(); panelT = 0.25; }
+  requestAnimationFrame(frame);
+}
+S.running = true; S.started = true; $('run').textContent = 'Pause';
+updatePanel();
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

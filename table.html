@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Referee for the 3D-printed Living Facade tabletop game: call each round, check the table against the rules, and tally results against the simulation.">
+<title>Living Facade Table</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: referee sheet. Left: the round being called and the check board. Right: the rules and the fair tally. */
+:root {
+  --ground: #eef0ea; --ink: #1b1f1a; --muted: #59625a; --rule: #cdd3c8; --sheet: #e0e4da; --tray: #c6cdbf;
+  --leaf: #3d7838; --give: #d4903a; --refuse: #c7361f; --flow: #2f62a3; --ok: #2f7d4f;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ground: #111411; --ink: #e3e8df; --muted: #98a093; --rule: #2b302a; --sheet: #1a1e19; --tray: #2b3128; --leaf: #5fa457; --give: #e0a24e; --refuse: #ff6a4f; --flow: #7fa9d9; --ok: #5fb884; color-scheme: dark; } }
+:root[data-theme="dark"] { --ground: #111411; --ink: #e3e8df; --muted: #98a093; --rule: #2b302a; --sheet: #1a1e19; --tray: #2b3128; --leaf: #5fa457; --give: #e0a24e; --refuse: #ff6a4f; --flow: #7fa9d9; --ok: #5fb884; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ground); color: var(--ink); font: 16px/1.55 var(--sans); }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--flow); outline-offset: 2px; }
+.sitebar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--ground); border-bottom: 1px solid var(--rule); }
+.sitebar .in { max-width: 1180px; margin: 0 auto; padding-inline: 20px; display: flex; align-items: center; gap: 18px; min-height: 52px; flex-wrap: wrap; }
+.sitebar a { font: 500 14px/1 var(--sans); color: var(--muted); text-decoration: none; padding-block: 6px; }
+.sitebar a:hover { color: var(--ink); }
+.sitebar .mk { font: 600 17px/1 var(--display); color: var(--ink); margin-right: auto; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 28px; }
+.eyebrow, .label { font: 500 12px/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0; }
+h1 { font: 700 clamp(40px, 6vw, 64px)/1 var(--display); margin: 8px 0 12px; text-wrap: balance; }
+h2 { font: 600 26px/1.15 var(--display); margin: 0 0 10px; }
+p { margin: 0 0 12px; max-width: 64ch; }
+.lede { font-size: 18px; max-width: 62ch; }
+.grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 32px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { display: grid; gap: 16px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button, select, input { font: 500 15px/1 var(--sans); color: var(--ink); background: var(--ground); border: 1.5px solid var(--ink); border-radius: 2px; padding: 10px 14px; }
+button { cursor: pointer; }
+button:hover { background: var(--sheet); }
+button.primary { background: var(--ink); color: var(--ground); }
+button:disabled { opacity: .45; cursor: default; }
+input[type=number] { width: 7em; font-family: var(--mono); }
+.seg { display: flex; }
+.seg button { border-radius: 0; margin-left: -1.5px; }
+.seg button:first-child { margin-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
+.call { border: 1.5px solid var(--ink); padding: 16px 18px; display: grid; gap: 12px; }
+.roundhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.roundhead b { font: 700 40px/1 var(--display); font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 500 20px/1 var(--mono); padding: 10px 12px; border: 1.5px solid var(--flow); color: var(--flow); border-radius: 2px; font-variant-numeric: tabular-nums; }
+.chip.skip { border-color: var(--rule); color: var(--muted); text-decoration: line-through; font-size: 15px; }
+.chip.spare { border-style: dashed; border-color: var(--rule); color: var(--muted); font-size: 15px; }
+.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+.steps li::marker { font-family: var(--mono); color: var(--muted); }
+details summary { cursor: pointer; font-weight: 500; }
+.moves { margin: 8px 0 0; padding: 0; list-style: none; font: 14px/1.6 var(--mono); }
+.moves .died { color: var(--refuse); }
+#board { width: 100%; max-width: 100%; height: auto; display: block; border: 1px solid var(--rule); background: var(--ground); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border-radius: 2px; }
+.result { border: 1.5px solid var(--ink); padding: 16px 18px; display: grid; gap: 10px; }
+.verdict { font: 600 22px/1.2 var(--display); }
+.verdict.ok { color: var(--ok); } .verdict.off { color: var(--give); }
+table { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--rule); }
+th { font: 500 12px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border-bottom: 1.5px solid var(--ink); }
+.tablewrap { overflow-x: auto; }
+.rules { border-top: 1.5px solid var(--ink); padding-top: 16px; }
+.rules ol { padding-left: 1.3em; margin: 0; display: grid; gap: 8px; }
+.rules li::marker { font-family: var(--mono); color: var(--muted); }
+.note { color: var(--muted); font-size: 14px; }
+.inline-confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+</style>
+</head>
+<body>
+<header class="sitebar"><div class="in"><a class="mk" href="./">&larr; Living Facade</a><a href="play.html">Playground</a><a href="./#film">Film</a><a href="./#brief">Brief</a></div></header>
+<main class="wrap">
+  <header>
+    <p class="eyebrow">Physical proxy · referee</p>
+    <h1>The facade, by hand</h1>
+    <p class="lede">The same local rules as the playground, played on the 3D-printed board. Pick a reach gauge, play twelve rounds, and count the dead caps. This page calls each round, shows what the rules say should be on the table, and tallies every game played at the fair against the simulation.</p>
+  </header>
+
+  <section class="grid">
+    <div class="panel">
+      <div class="row">
+        <span class="label" style="margin-right:6px">Gauge</span>
+        <div class="seg" role="group" aria-label="Reach gauge">
+          <button data-r="2" aria-pressed="false">Sees 2</button>
+          <button data-r="5" aria-pressed="true">Sees 5</button>
+          <button data-r="99" aria-pressed="false">Sees whole wall</button>
+        </div>
+      </div>
+      <div class="row">
+        <label class="label" for="gameNo">Game number</label>
+        <input type="number" id="gameNo" min="1" max="9999" value="1">
+        <button id="newGame" class="primary">Start this game</button>
+        <span class="note">The same number and gauge always give the same game.</span>
+      </div>
+
+      <div class="call" id="call" aria-live="polite">
+        <div class="roundhead"><span class="label" id="gameLabel">Game 1 · sees 5</span><b id="roundNo">Round 1 / 12</b></div>
+        <div>
+          <p class="label" style="margin-bottom:8px">1 · New needs: place a marker on the first five free modules</p>
+          <div class="chips" id="chips"></div>
+        </div>
+        <ol class="steps" start="2">
+          <li>Move drones D1 to D6 in order, each by the drone rule.</li>
+          <li>Add one age ring to every need still on the board. A need that would take its fourth ring dies: replace it with a dead cap.</li>
+        </ol>
+        <details id="check">
+          <summary>Check the table against the rules</summary>
+          <ul class="moves" id="moves"></ul>
+        </details>
+        <div class="row">
+          <button id="back">Back</button>
+          <button id="next" class="primary">Next round</button>
+        </div>
+      </div>
+
+      <figure style="margin:0">
+        <canvas id="board" width="900" height="720" aria-label="What the rules say the table should look like at the end of this round"></canvas>
+        <figcaption class="legend" style="margin-top:8px">
+          <span><i style="background:var(--flow)"></i>Need, number = age rings</span>
+          <span><i style="background:var(--refuse)"></i>Dead cap</span>
+          <span><i style="background:var(--ink)"></i>Drone and where it moved this round</span>
+        </figcaption>
+      </figure>
+
+      <div class="result" id="result" hidden>
+        <h2>Count the dead caps</h2>
+        <div class="row">
+          <label for="tableLost">Dead caps on the table</label>
+          <input type="number" id="tableLost" min="0" max="140">
+          <button id="record" class="primary">Record game</button>
+        </div>
+        <p class="verdict" id="verdict"></p>
+        <p class="note" id="verdictNote"></p>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div>
+        <h2>Fair tally</h2>
+        <p class="note">Every recorded game on this device. The prediction is what the table rules lose on average over 2,000 games; the playground column is the full simulation from the film.</p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th scope="col">Gauge</th><th scope="col">Games</th><th scope="col">Table, avg</th><th scope="col">Rules predict</th><th scope="col">Playground</th></tr></thead>
+            <tbody id="tally"></tbody>
+          </table>
+        </div>
+        <p class="verdict" id="tallyVerdict" style="margin-top:12px"></p>
+        <div class="inline-confirm" id="clearRow"><button id="clear">Clear tally</button></div>
+      </div>
+
+      <div class="rules">
+        <h2>Rules</h2>
+        <ol>
+          <li><b>Setup.</b> Drones D1–D6 sit on their numbered dock pads on the roof. Pick one gauge for the whole game.</li>
+          <li><b>New needs.</b> Each round, place a need marker on the first five called modules that are free. Skip any called module that already has a need or a dead cap.</li>
+          <li><b>Sight.</b> A drone sees a need if the need's module centre is within the gauge from the drone's centre. With the whole-wall gauge, it sees every need.</li>
+          <li><b>Choose.</b> Each drone, in order D1 to D6, takes the oldest need it can see that no earlier drone took this round. Ties: the nearest by steps, then the lowest level, then the lowest bay. If it sees nothing, it heads home to its dock.</li>
+          <li><b>Move.</b> Up to three steps along the grid, up or down first, then sideways. If it reaches its need, remove the marker and its rings: the module is saved.</li>
+          <li><b>Age.</b> Add a ring to every need left on the board. A need that would take a fourth ring dies and gets a dead cap.</li>
+          <li><b>End.</b> After twelve rounds, count the dead caps.</li>
+        </ol>
+      </div>
+    </aside>
+  </section>
+</main>
+
+<script>
+(() => {
+  // ---------- the table rules (identical to the code that measured them) ----------
+  const COLS = 14, ROWS = 10, T = 12, NEW = 5, DIES = 4, STEPS = 3, HOMES = [1, 3, 6, 8, 11, 13];
+  const PLAYGROUND = { 2: 34, 5: 14, 99: 19 }; // film: average lost at reach 2, 5, 15 over 12 seeded seasons
+  const NAME = { 2: 'sees 2', 5: 'sees 5', 99: 'sees whole wall' };
+  function rng(s) { let a = s; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const lexLess = (a, b) => { for (let j = 0; j < a.length; j++) if (a[j] !== b[j]) return a[j] < b[j]; return false; };
+  const mod = (x, y) => `L${y + 1}·B${x + 1}`;
+  const where = (x, y) => y >= ROWS ? 'dock' : mod(x, y);
+  function calls(seed) { const r = rng(seed * 7919 + 17), out = []; for (let k = 0; k < T; k++) { const list = []; for (let j = 0; j < 12; j++) list.push([(r() * COLS) | 0, (r() * ROWS) | 0]); out.push(list); } return out; }
+  // Plays the whole game and keeps a snapshot after every round.
+  function play(R, seed) {
+    const C = calls(seed), need = new Map(), dead = new Set(), key = (x, y) => x + ',' + y;
+    const drones = HOMES.map(b => ({ x: b, y: ROWS })), rounds = [];
+    let lost = 0;
+    for (let k = 0; k < T; k++) {
+      const call = [], log = [];
+      let placed = 0;
+      for (const [x, y] of C[k]) {
+        if (placed === NEW) { call.push({ x, y, kind: 'spare' }); continue; }
+        const kk = key(x, y);
+        if (need.has(kk) || dead.has(kk)) { call.push({ x, y, kind: 'skip' }); continue; }
+        need.set(kk, { x, y, age: 0 }); placed++; call.push({ x, y, kind: 'place' });
+      }
+      const taken = new Set(), paths = [];
+      drones.forEach((d, i) => {
+        let best = null;
+        for (const q of need.values()) {
+          const kk = key(q.x, q.y); if (taken.has(kk)) continue;
+          if (Math.hypot(q.x - d.x, q.y - d.y) > R + 1e-9) continue;
+          const cand = [-q.age, Math.abs(q.x - d.x) + Math.abs(q.y - d.y), q.y, q.x];
+          if (!best || lexLess(cand, best.c)) best = { q, c: cand };
+        }
+        const tgt = best ? [best.q.x, best.q.y] : [HOMES[i], ROWS];
+        if (best) taken.add(key(best.q.x, best.q.y));
+        const from = [d.x, d.y], path = [[d.x, d.y]];
+        let s = STEPS;
+        while (s > 0 && (d.x !== tgt[0] || d.y !== tgt[1])) { if (d.y !== tgt[1]) d.y += Math.sign(tgt[1] - d.y); else d.x += Math.sign(tgt[0] - d.x); s--; path.push([d.x, d.y]); }
+        let fixed = false;
+        if (best && d.x === best.q.x && d.y === best.q.y) { need.delete(key(d.x, d.y)); fixed = true; }
+        paths.push(path);
+        log.push(`D${i + 1}: ${where(...from)} → ${where(d.x, d.y)}` + (best ? `, after ${mod(best.q.x, best.q.y)} (age ${best.q.age})${fixed ? ', saved it' : ''}` : ', nothing in sight'));
+      });
+      const died = [];
+      for (const [kk, q] of need) { q.age++; if (q.age >= DIES) { need.delete(kk); dead.add(kk); lost++; died.push(mod(q.x, q.y)); } }
+      if (died.length) log.push(`Died: ${died.join(', ')}`);
+      rounds.push({ call, log, needs: [...need.values()].map(q => ({ ...q })), dead: [...dead].map(s => s.split(',').map(Number)), drones: drones.map(d => [d.x, d.y]), paths, lost });
+    }
+    return { rounds, lost };
+  }
+
+  // Expected losses per gauge, over 2,000 games (computed once, in the background of the first paint).
+  const EXPECT = {};
+  function expectations() { for (const R of [2, 5, 99]) { let s = 0; for (let g = 0; g < 2000; g++) s += play(R, g + 100000).lost; EXPECT[R] = s / 2000; } }
+
+  // ---------- state ----------
+  let R = 5, game = 1, data = null, k = 0;
+  const $ = id => document.getElementById(id);
+  const store = { get() { try { return JSON.parse(localStorage.getItem('lf-table-tally') || '[]'); } catch (e) { return []; } }, set(v) { try { localStorage.setItem('lf-table-tally', JSON.stringify(v)); } catch (e) {} } };
+  let tally = store.get();
+
+  function start() {
+    game = Math.max(1, Math.min(9999, parseInt($('gameNo').value, 10) || 1)); $('gameNo').value = game;
+    data = play(R, game); k = 0; $('result').hidden = true; $('verdict').textContent = ''; $('verdictNote').textContent = ''; $('tableLost').value = '';
+    render();
+  }
+  function render() {
+    const rd = data.rounds[k];
+    $('gameLabel').textContent = `Game ${game} · ${NAME[R]}`;
+    $('roundNo').textContent = `Round ${k + 1} / ${T}`;
+    $('chips').innerHTML = rd.call.map(c => `<span class="chip ${c.kind === 'place' ? '' : c.kind}" title="${c.kind === 'skip' ? 'already taken: skip' : c.kind === 'spare' ? 'spare: only if needed' : 'place a need here'}">${mod(c.x, c.y)}</span>`).join('');
+    $('moves').innerHTML = rd.log.map(l => `<li class="${l.startsWith('Died') ? 'died' : ''}">${l}</li>`).join('');
+    $('back').disabled = k === 0;
+    $('next').textContent = k === T - 1 ? 'Finish game' : 'Next round';
+    drawBoard(rd);
+  }
+  function tokens() { const cs = getComputedStyle(document.documentElement), g = n => cs.getPropertyValue('--' + n).trim(); return { ground: g('ground'), ink: g('ink'), muted: g('muted'), rule: g('rule'), tray: g('tray'), flow: g('flow'), refuse: g('refuse') }; }
+  function drawBoard(rd) {
+    const cv = $('board'), g = cv.getContext('2d'), C = tokens(), P = 58, x0 = 60, y0 = 90;
+    const X = c => x0 + c * P, Y = l => y0 + (ROWS - 1 - l) * P;
+    g.fillStyle = C.ground; g.fillRect(0, 0, cv.width, cv.height);
+    g.font = '500 15px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (let c = 0; c < COLS; c++) for (let l = 0; l < ROWS; l++) { g.fillStyle = C.tray; g.fillRect(X(c) + 4, Y(l) + 4, P - 8, P - 8); }
+    g.fillStyle = C.muted;
+    for (let l = 0; l < ROWS; l++) g.fillText(String(l + 1), x0 - 22, Y(l) + P / 2);
+    for (let c = 0; c < COLS; c++) g.fillText(String(c + 1), X(c) + P / 2, y0 + ROWS * P + 20);
+    g.strokeStyle = C.ink; g.lineWidth = 2; g.beginPath(); g.moveTo(x0, y0 - 2); g.lineTo(x0 + COLS * P, y0 - 2); g.stroke();
+    HOMES.forEach((b, i) => { g.strokeStyle = C.muted; g.lineWidth = 1.5; g.strokeRect(X(b) + 8, y0 - P + 6, P - 16, P - 16); });
+    for (const [c, l] of rd.dead) { const x = X(c) + P / 2, y = Y(l) + P / 2; g.fillStyle = C.refuse; g.fillRect(x - 20, y - 20, 40, 40); g.strokeStyle = C.ground; g.lineWidth = 3; g.beginPath(); g.moveTo(x - 12, y - 12); g.lineTo(x + 12, y + 12); g.moveTo(x + 12, y - 12); g.lineTo(x - 12, y + 12); g.stroke(); }
+    for (const q of rd.needs) { const x = X(q.x) + P / 2, y = Y(q.y) + P / 2; g.fillStyle = C.flow; g.beginPath(); g.arc(x, y, 17, 0, 7); g.fill(); g.fillStyle = C.ground; g.font = '600 18px "IBM Plex Mono", monospace'; g.fillText(String(q.age), x, y + 1); }
+    const pos = ([c, l]) => [X(c) + P / 2, (l >= ROWS ? y0 - P / 2 + 2 : Y(l) + P / 2)];
+    rd.paths.forEach(path => { if (path.length < 2) return; g.strokeStyle = C.ink; g.lineWidth = 2.5; g.setLineDash([5, 4]); g.beginPath(); path.forEach((p, i) => { const [x, y] = pos(p); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.setLineDash([]); });
+    rd.drones.forEach((p, i) => { const [x, y] = pos(p); const dx = (i % 2 ? 10 : -10) * (rd.drones.filter(q => q[0] === p[0] && q[1] === p[1]).length > 1 ? 1 : 0); g.fillStyle = C.ink; g.beginPath(); g.arc(x + dx, y, 15, 0, 7); g.fill(); g.fillStyle = C.ground; g.font = '600 15px "IBM Plex Mono", monospace'; g.fillText(String(i + 1), x + dx, y + 1); });
+    g.fillStyle = C.ink; g.textAlign = 'left'; g.font = '500 15px "IBM Plex Mono", monospace';
+    g.fillText(`After round ${k + 1}: ${rd.lost} dead, ${rd.needs.length} needs on the board`, x0, 30);
+  }
+  function renderTally() {
+    const rows = [2, 5, 99].map(r => {
+      const g = tally.filter(t => t.R === r), n = g.length, avg = n ? g.reduce((s, t) => s + t.table, 0) / n : null;
+      return { r, n, avg, html: `<tr><td>${NAME[r]}</td><td>${n}</td><td>${avg == null ? '–' : avg.toFixed(1)}</td><td>${EXPECT[r] == null ? '…' : EXPECT[r].toFixed(1)}</td><td>${PLAYGROUND[r]}</td></tr>` };
+    });
+    $('tally').innerHTML = rows.map(r => r.html).join('');
+    const [two, five, all] = rows, v = $('tallyVerdict');
+    if (five.n && two.n && all.n) {
+      const ok = five.avg < two.avg && five.avg < all.avg;
+      v.className = 'verdict ' + (ok ? 'ok' : 'off');
+      v.textContent = ok ? 'The table reproduces the finding: seeing five loses fewer than seeing two or the whole wall.' : 'Not yet: on the table so far, seeing five does not beat both other gauges. Play more games.';
+    } else { v.className = 'verdict'; v.textContent = 'Play at least one game with each gauge to test the finding.'; }
+  }
+
+  // ---------- controls ----------
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+    R = +b.dataset.r; document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); start();
+  }));
+  $('newGame').addEventListener('click', start);
+  $('back').addEventListener('click', () => { if (k > 0) { k--; render(); } });
+  $('next').addEventListener('click', () => {
+    if (k < T - 1) { k++; render(); $('check').open = false; }
+    else { $('result').hidden = false; $('tableLost').focus(); }
+  });
+  $('record').addEventListener('click', () => {
+    const v = parseInt($('tableLost').value, 10);
+    if (!(v >= 0)) { $('verdict').className = 'verdict off'; $('verdict').textContent = 'Enter how many dead caps are on the table.'; return; }
+    const exp = data.lost, diff = v - exp;
+    tally.push({ game, R, table: v, rules: exp, at: new Date().toISOString() }); store.set(tally);
+    $('verdict').className = 'verdict ' + (diff === 0 ? 'ok' : 'off');
+    $('verdict').textContent = diff === 0 ? `The table matches the rules: ${v} lost.` : `The table lost ${v}; the rules say ${exp}.`;
+    $('verdictNote').textContent = diff === 0 ? 'Recorded in the tally.' : 'Recorded. A difference usually means a drone chose or moved differently from the rule; open the round checks to find where.';
+    renderTally();
+    $('gameNo').value = game + 1;
+  });
+  function askClear() {
+    const row = $('clearRow');
+    row.innerHTML = `<span>Delete all ${tally.length} recorded games?</span><button id="yes">Delete</button><button id="no">Keep</button>`;
+    const restore = () => { row.innerHTML = '<button id="clear">Clear tally</button>'; $('clear').addEventListener('click', askClear); };
+    $('yes').addEventListener('click', () => { tally = []; store.set(tally); renderTally(); restore(); });
+    $('no').addEventListener('click', restore);
+  }
+  $('clear').addEventListener('click', askClear);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => data && render());
+
+  start();
+  renderTally();
+  setTimeout(() => { expectations(); renderTally(); }, 50);
+})();
+</script>
+</body>
+</html>

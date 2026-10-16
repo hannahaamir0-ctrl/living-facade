@@ -156,6 +156,9 @@ pre { margin: 0; font: 13px/1.55 var(--mono); background: var(--sheet); padding:
 .check .met { font: 500 12px/1 var(--mono); color: var(--ok); white-space: nowrap; }
 .tablewrap { overflow-x: auto; }
 
+.film { display: block; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; background: #111411; border: 1.5px solid var(--ink); margin-top: 8px; }
+.filmlink { font: 13px/1.5 var(--mono); color: var(--muted); margin-top: 10px; }
+
 .play { background: var(--ink); color: var(--ground); }
 .play .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px; align-items: center; padding-block: 56px; }
 @media (max-width: 760px) { .play .wrap { grid-template-columns: minmax(0, 1fr); } }
@@ -172,7 +175,6 @@ footer b { display: block; font: 600 15px/1.3 var(--display); overflow-wrap: any
 footer span { font: 10.5px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 @media (max-width: 620px) { footer .wrap { grid-template-columns: 1fr 1fr; } footer .wrap > div:nth-child(2) { border-right: 0; } footer .wrap > div:nth-child(3) { padding-left: 0; } }
 </style>
-
 </head>
 <body>
 <header class="top">
@@ -183,6 +185,7 @@ footer span { font: 10.5px/1.3 var(--mono); letter-spacing: .08em; text-transfor
       <a href="#propose">Proposals</a>
       <a href="#measure">Measures</a>
       <a href="#brief">Brief</a>
+      <a href="table.html">By hand</a>
       <a class="btn primary" href="play.html">Play</a>
     </nav>
   </div>
@@ -355,6 +358,7 @@ footer span { font: 10.5px/1.3 var(--mono); letter-spacing: .08em; text-transfor
               <tr><td>(b) Propose</td><td><b>Suggest next move</b> asks Claude directly with your key, or copies a documented prompt for any chatbot. Replies go in the Proposal box.</td><td class="met">Met</td></tr>
               <tr><td>(c) Visible refusal</td><td>Refused moves are drawn on the wall with a code: unreachable routes, jams, overwatering, a full dock.</td><td class="met">Met</td></tr>
               <tr><td>(d) Score or trace</td><td>Season score, survival, throughput, coverage and the proposal log, exportable as JSON.</td><td class="met">Met</td></tr>
+              <tr><td>Stretch: physical proxy</td><td>A 3D-printed facade board and pieces for playing the same rules by hand, with reach gauges of 2 and 5. The <a href="table.html">referee page</a> calls each round and tallies games against the simulation.</td><td class="met">Built</td></tr>
             </tbody>
           </table>
         </div>
